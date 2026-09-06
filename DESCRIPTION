@@ -21,9 +21,15 @@ BugReports: https://github.com/GidonFrischkorn/apabayes/issues
 Depends:
     R (>= 4.3.0)
 Imports:
+    cli,
     rlang
 Suggests:
-    testthat (>= 3.0.0)
+    effectsize,
+    insight,
+    knitr,
+    papaja,
+    testthat (>= 3.0.0),
+    withr
 Config/testthat/edition: 3
 Encoding: UTF-8
 Language: en-GB
