@@ -1,0 +1,33 @@
+# Untracked working material: session prompts, probes, review notes, rigor artefacts
+local/
+
+# R session artefacts
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+Rplots.pdf
+
+# Package build artefacts
+apabayes_*.tar.gz
+apabayes.Rcheck/
+
+# Built documentation site and vignette build artefacts
+docs/
+inst/doc/
+/doc/
+/Meta/
+
+# Quarto render artefacts of the example document
+/.quarto/
+inst/apaquarto-example/*_files/
+inst/apaquarto-example/*.pdf
+inst/apaquarto-example/*.docx
+inst/apaquarto-example/*.html
+inst/apaquarto-example/*.tex
+
+# Credentials: never commit
+.Renviron
+
+# macOS
+.DS_Store

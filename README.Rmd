@@ -1,0 +1,63 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# apabayes
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+apabayes reports Bayesian and structural equation models in APA 7 form
+inside [apaquarto](https://github.com/wjschne/apaquarto) documents:
+inline strings for the running text and APA tables that render through
+`apa7::apa_flextable()` to PDF, Word, HTML and Typst.
+
+It reports `brmsfit` objects (and therefore `bmmfit`), `lavaan` and
+`blavaan` fits, `brms::hypothesis()` output, `loo::loo_compare()`
+output, `bayestestR::bayesfactor_models()` output and `emmeans`
+posterior contrasts. Every number comes from the easystats packages
+(`parameters`, `bayestestR`, `performance`, `insight`); apabayes
+selects, arranges and formats.
+
+The package is under construction. The design record is
+[ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Installation
+
+The development version installs from GitHub once the repository is
+public:
+
+``` r
+# install.packages("pak")
+pak::pak("GidonFrischkorn/apabayes")
+```
+
+## Planned use
+
+Inline, in an apaquarto document:
+
+``` r
+fit <- brms::brm(mpg ~ wt + am, data = mtcars)
+apa_inline(fit, "wt")
+#> *b* = -3.49, 95% CrI [-5.50, -1.66], *pd* > .999
+```
+
+As a table, in a chunk with `#| label: tbl-fit`, `#| tbl-cap:` and
+`#| apa-note:`:
+
+``` r
+fit |>
+  apa_parameters() |>
+  apa_flextable()
+```

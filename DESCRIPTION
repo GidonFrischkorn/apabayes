@@ -1,0 +1,31 @@
+Package: apabayes
+Title: Report Bayesian and Structural Equation Models in APA Style for
+    apaquarto
+Version: 0.0.0.9000
+Authors@R:
+    person("Gidon T.", "Frischkorn", , "gidon.frischkorn@psychologie.uzh.ch", role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0002-5055-9764"))
+Description: Inline strings and tables in American Psychological
+    Association style, seventh edition, for Bayesian regression models
+    fitted with 'brms' and 'bmm', structural equation models fitted with
+    'lavaan' and 'blavaan', posterior hypothesis tests, leave-one-out
+    model comparisons, Bayes factor comparisons and posterior contrasts.
+    Every number comes from the 'easystats' packages ('parameters',
+    'bayestestR', 'performance', 'insight'); 'apabayes' selects, arranges
+    and formats. Tables extend the 'apa7' package so that they render
+    through 'apa_flextable()' in the 'apaquarto' Quarto extension to PDF,
+    Word, HTML and Typst; inline objects follow the 'papaja' result shape.
+License: GPL (>= 3)
+URL: https://github.com/GidonFrischkorn/apabayes
+BugReports: https://github.com/GidonFrischkorn/apabayes/issues
+Depends:
+    R (>= 4.3.0)
+Imports:
+    rlang
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0
