@@ -1,5 +1,11 @@
 # apabayes 0.0.0.9000
 
+* fix: `apa_tidy(fit, effects = "random")` on a model without random
+  effects now says so ("`effects` is "random", but `x` has no random
+  effects.") instead of surfacing easystats' `'by' must specify a
+  uniquely valid column`. The check is `insight::is_mixed_model()` on
+  the model formula, run before easystats is called; `insight` moves
+  from Suggests to Imports for it.
 * internal: the shape every parameters route repeats — check the
   reporting arguments, call easystats once, match rows by name, assemble
   the contract columns — moves into `R/extract-shared.R`, and the

@@ -63,7 +63,9 @@ equals \code{term} for every variable you do not name.}
 \code{\link[parameters:model_parameters]{parameters::model_parameters()}}: \code{"fixed"} (the easystats default,
 population-level parameters and the distributional ones such as
 \code{sigma}), \code{"all"} (adds the group-level standard deviations and
-correlations) or \code{"random"}.}
+correlations) or \code{"random"}. Asking for \code{"random"} from a model that
+has no random effects is an error, decided by
+\code{\link[insight:is_mixed_model]{insight::is_mixed_model()}} before easystats is called.}
 
 \item{component}{Which model component to report, passed to
 \code{\link[parameters:model_parameters]{parameters::model_parameters()}}. \code{"all"} is the easystats default.}

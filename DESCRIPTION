@@ -23,6 +23,7 @@ Depends:
 Imports:
     bayestestR,
     cli,
+    insight,
     parameters,
     rlang,
     tibble,
@@ -30,10 +31,10 @@ Imports:
 Suggests:
     brms,
     effectsize,
-    insight,
     knitr,
     papaja,
     posterior,
+    rstanarm,
     runjags,
     testthat (>= 3.0.0),
     withr

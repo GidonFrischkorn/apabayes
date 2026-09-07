@@ -212,13 +212,32 @@ test_that("colliding pretty_names are disambiguated so labels stay unique", {
   expect_true(any(grepl("cyl_f", out$label, fixed = TRUE)))
 })
 
-test_that("effects = 'random' on a fixed-effects fit aborts upstream", {
-  # Measured, not assumed: parameters::model_parameters() raises an opaque
-  # merge() error before the method's own guard is reached. Pinned so an
-  # upstream fix is noticed; see the spec's open item on a friendlier
-  # message.
+test_that("effects = 'random' on a fixed-effects fit is refused up front", {
+  # Measured (2026-09-07): left to parameters::model_parameters(), this
+  # call aborts with the opaque merge() error `'by' must specify a
+  # uniquely valid column`. The guard asks insight::is_mixed_model()
+  # first, so the message names the actual problem and never depends on
+  # the wording of the upstream error.
   fit <- test_brms_fit("full")
-  expect_error(apa_tidy(fit, effects = "random"), "uniquely valid column")
+  expect_error(apa_tidy(fit, effects = "random"), "no random effects")
+  expect_error(apa_tidy(fit, effects = "random"), "effects", fixed = TRUE)
+})
+
+test_that("effects = 'random' on the mixed fit reports the group-level rows", {
+  # Measured: the rows are the r_* deviations and the sd_* term, with a
+  # `Group` column but neither `Effects` nor `Component`. The diagnostics
+  # join covers sd_* but not r_*: diagnostic_posterior() returns no row
+  # for the deviations, so their rhat and ESS are NA by the join rule.
+  fit <- test_brms_fit("mixed")
+  mp <- mp_of(fit, effects = "random", component = "all")
+  out <- apa_tidy(fit, effects = "random")
+
+  expect_identical(out$term, mp$Parameter)
+  expect_equal(out$estimate, mp$Median)
+  expect_true(all(out$group == "cyl_f"))
+  expect_true(all(is.na(out$effects)))
+  expect_true(all(is.na(out$component)))
+  expect_false(is.na(out$rhat[out$term == "sd_cyl_f__Intercept"]))
 })
 
 test_that("a model without random effects leaves effects and group NA", {

@@ -18,7 +18,9 @@
 #'   [parameters::model_parameters()]: `"fixed"` (the easystats default,
 #'   population-level parameters and the distributional ones such as
 #'   `sigma`), `"all"` (adds the group-level standard deviations and
-#'   correlations) or `"random"`.
+#'   correlations) or `"random"`. Asking for `"random"` from a model that
+#'   has no random effects is an error, decided by
+#'   [insight::is_mixed_model()] before easystats is called.
 #' @param component Which model component to report, passed to
 #'   [parameters::model_parameters()]. `"all"` is the easystats default.
 #' @export
@@ -41,6 +43,7 @@ apa_tidy.brmsfit <- function(x,
   # here, and would otherwise fail deep inside `model_parameters()`.
   rlang::check_installed("brms", reason = "to read brmsfit objects.")
   effects <- rlang::arg_match(effects)
+  check_random_effects(x, effects)
   centrality <- rlang::arg_match(centrality)
   ci <- rlang::arg_match(ci)
   rope <- check_route_args(ci_level, diagnostics, rope, rope_ci)

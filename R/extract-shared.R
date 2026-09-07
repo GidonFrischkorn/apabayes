@@ -28,6 +28,29 @@ check_route_args <- function(ci_level, diagnostics, rope, rope_ci) {
   rope
 }
 
+# `effects = "random"` asked of a model that has no random effects. Left
+# to easystats this is not one behaviour but two, both measured
+# 2026-09-07: `model_parameters(brmsfit)` aborts inside a `merge()` with
+# `'by' must specify a uniquely valid column`, and
+# `model_parameters(stanreg)` silently returns the fixed rows instead.
+# The check is `insight::is_mixed_model()`, which reads the model's own
+# formula, so the message never depends on the wording of an upstream
+# error. `insight` moved from Suggests to Imports for this (decision 13).
+check_random_effects <- function(x, effects, call = rlang::caller_env()) {
+  if (identical(effects, "random") && !insight::is_mixed_model(x)) {
+    cli::cli_abort(
+      c(
+        "{.arg effects} is {.val random}, but {.arg x} has no random
+         effects.",
+        i = "Report a model with a grouping term, or use
+             {.code effects = \"fixed\"} or {.code effects = \"all\"}."
+      ),
+      call = call
+    )
+  }
+  invisible(effects)
+}
+
 # The attributes a "parameters" table carries. `rope_range` and `rope_ci`
 # appear only when a ROPE was computed, so a table note cannot state
 # bounds that were never applied.
