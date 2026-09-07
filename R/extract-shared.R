@@ -102,7 +102,10 @@ optional_column <- function(mp, name, row) {
 # qualified with its group, and falls back to the term if that still does
 # not separate it.
 parameters_labels <- function(mp, terms, group, labels) {
-  pretty <- attr(mp, "pretty_names")
+  # `exact = TRUE` for the reason given in `result_ci_level()`: this is a
+  # foreign object's attribute, and `attr()` matching partially would let
+  # a future easystats attribute answer in its place.
+  pretty <- attr(mp, "pretty_names", exact = TRUE)
   out <- if (is.character(pretty) && !is.null(names(pretty))) {
     unname(pretty[terms])
   } else {
@@ -187,13 +190,27 @@ call_model_parameters <- function(x, centrality, ci, ci_level, rope,
   as.data.frame(do.call(parameters::model_parameters, args))
 }
 
+# The numeric counterpart of `optional_column()`: `pd` is absent under
+# `test = NULL`, `ROPE_Percentage` only present when a ROPE was asked for,
+# `log_BF` only under `test = "bf"`, `Rhat`/`ESS_tail` only on a table
+# computed from a fit (measured on the result-object route). On the fit
+# routes the columns exist exactly when the argument was given.
+optional_numeric <- function(mp, name, row) {
+  if (!name %in% names(mp)) {
+    return(rep(NA_real_, length(row)))
+  }
+  as.double(mp[[name]])[row]
+}
+
 # The contract rows a parameters route builds from a `model_parameters()`
-# table: the rows in `terms` order, matched by `Parameter` and never by
-# position, the estimate read from the column the centrality names, the
-# optional columns read defensively. The diagnostics are the route's own
-# and are added by the caller.
-parameters_rows <- function(mp, terms, labels, centrality, ci, ci_level,
-                            rope) {
+# or `describe_posterior()` table: the rows in `terms` order, matched by
+# `Parameter` and never by position, the estimate read from the column the
+# centrality names, the optional columns read defensively. `bf` is the
+# natural-scale `log_BF` — a change of scale, the one arithmetic apabayes
+# does on an easystats number, because the contract and `apa_bf()` are on
+# the natural scale. R-hat and ESS are the route's own and are added by
+# the caller.
+parameters_rows <- function(mp, terms, labels, centrality, ci, ci_level) {
   row <- match(terms, mp$Parameter)
   group <- optional_column(mp, "Group", row)
   # `Group` is "" on fixed rows (easystats' printing convenience); the
@@ -208,8 +225,9 @@ parameters_rows <- function(mp, terms, labels, centrality, ci, ci_level,
     ci_high = mp$CI_high[row],
     ci_method = ci,
     ci_level = ci_level,
-    pd = mp$pd[row],
-    rope_pct = if (is.null(rope)) NA_real_ else mp$ROPE_Percentage[row],
+    pd = optional_numeric(mp, "pd", row),
+    rope_pct = optional_numeric(mp, "ROPE_Percentage", row),
+    bf = exp(optional_numeric(mp, "log_BF", row)),
     component = optional_column(mp, "Component", row),
     group = group,
     effects = optional_column(mp, "Effects", row),

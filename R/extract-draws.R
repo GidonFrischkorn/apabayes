@@ -31,6 +31,11 @@
 #' )
 #' apa_tidy(draws)
 #' apa_tidy(draws, variables = "mu", ci = "hdi", ci_level = 0.9)
+#'
+#' # An easystats table you already computed is reported as it stands:
+#' # the interval, its method and the ROPE are read off the object, not
+#' # recomputed, so those are not arguments here.
+#' apa_tidy(bayestestR::describe_posterior(draws))
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")
@@ -97,7 +102,10 @@ with_source_class <- function(x, source_class) {
 #'   `c(b_wt = "Weight")`. Draws objects carry no formula, so `label`
 #'   equals `term` for every variable you do not name.
 #' @param centrality `"median"` (the default of `parameters` for brms and
-#'   blavaan) or `"mean"`.
+#'   blavaan) or `"mean"`. On the result-object method it defaults to
+#'   `NULL`, meaning the centrality the table already holds: there is
+#'   nothing left to choose, and a table computed with
+#'   `centrality = "all"` must be told which of the two to report.
 #' @param ci `"eti"`, the equal-tailed interval reported as CrI, or
 #'   `"hdi"`, the highest-density interval.
 #' @param ci_level The interval mass, a number strictly between 0 and 1.

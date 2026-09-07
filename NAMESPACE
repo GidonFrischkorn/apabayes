@@ -2,7 +2,9 @@
 
 S3method(apa_tidy,brmsfit)
 S3method(apa_tidy,default)
+S3method(apa_tidy,describe_posterior)
 S3method(apa_tidy,draws)
+S3method(apa_tidy,parameters_model)
 S3method(apa_tidy,runjags)
 S3method(apa_tidy,stanreg)
 S3method(apa_tidy_diagnostics,default)

@@ -48,7 +48,7 @@ apa_tidy.stanreg <- function(x,
     effects = effects, component = component, priors = FALSE
   )
   terms <- resolve_parameters_variables(variables, mp$Parameter)
-  out <- parameters_rows(mp, terms, labels, centrality, ci, ci_level, rope)
+  out <- parameters_rows(mp, terms, labels, centrality, ci, ci_level)
   if (diagnostics) {
     out[c("rhat", "ess_bulk", "ess_tail")] <- stanreg_diagnostics(x, terms)
   }

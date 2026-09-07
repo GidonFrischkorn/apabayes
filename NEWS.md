@@ -1,5 +1,20 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` reports an easystats **result object** — the table
+  `bayestestR::describe_posterior()` or `parameters::model_parameters()`
+  already computed — and not only a fitted model. Because every Bayesian
+  model easystats can summarise returns a table inheriting
+  `describe_posterior`, this one route covers model classes apabayes has
+  no fit method for. Nothing is recomputed: the estimates, interval,
+  `pd`, ROPE percentage and diagnostics are read off the table, and the
+  reporting settings with them, so the method takes no `ci`, `ci_level`,
+  `rope` or `diagnostics` argument. `centrality = NULL` reports whichever
+  of the median and the mean the table holds and asks you to name one
+  when it holds both. `ess_bulk` is always `NA` — no easystats table
+  carries it; pass the fit for both ESS columns. A `parameters_model`
+  table that is *not* a posterior summary (a frequentist model, or one
+  computed with several `ci` levels) is refused rather than coerced to
+  draws, which is what the coercing default would otherwise do to it.
 * feat: `apa_tidy()` gains a `stanreg` method for rstanarm fits, the
   third route of the extract layer, with the brmsfit method's signature.
   Estimates, interval, pd and the optional ROPE come from
