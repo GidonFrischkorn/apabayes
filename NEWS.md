@@ -1,5 +1,18 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` gains a `stanreg` method for rstanarm fits, the
+  third route of the extract layer, with the brmsfit method's signature.
+  Estimates, interval, pd and the optional ROPE come from
+  `parameters::model_parameters()`, always called with `priors = FALSE`
+  (the prior merge appends junk `NA` rows under `effects = "random"`)
+  and `component = "all"` (the bare easystats default omits `sigma` on
+  this class). R-hat and both ESS columns come from
+  `posterior::summarise_draws()` over the fit's draws rather than from
+  `bayestestR::diagnostic_posterior()`, which never covers `sigma` on a
+  stanreg and disagrees numerically with `posterior` on the terms it
+  does cover; every reported parameter therefore has a diagnostic.
+  `apa_tidy_diagnostics()` already handled stanreg through its default
+  method, so there is no `stanreg` method for it.
 * internal: the brmsfit route's label derivation, optional-column
   reading and `variables =` resolution move to `R/extract-shared.R` as
   `parameters_labels()`, `optional_column()` and
@@ -10,7 +23,7 @@
   effects.") instead of surfacing easystats' `'by' must specify a
   uniquely valid column`. The check is `insight::is_mixed_model()` on
   the model formula, run before easystats is called; `insight` moves
-  from Suggests to Imports for it.
+  from Suggests to Imports for it, and `rstanarm` joins Suggests.
 * internal: the shape every parameters route repeats — check the
   reporting arguments, call easystats once, match rows by name, assemble
   the contract columns — moves into `R/extract-shared.R`, and the

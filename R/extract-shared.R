@@ -165,6 +165,58 @@ resolve_parameters_variables <- function(variables, available,
   variables
 }
 
+# The one `model_parameters()` call of a parameters route, with the
+# arguments the method was given. `rope_ci` and `rope_range` are passed
+# only when a ROPE was asked for, so the default call is exactly the
+# easystats default call; `...` carries the route's own pass-throughs
+# (`effects`, `component`, and `priors` on stanreg).
+call_model_parameters <- function(x, centrality, ci, ci_level, rope,
+                                  rope_ci, ...) {
+  args <- list(
+    x,
+    centrality = centrality,
+    ci = ci_level,
+    ci_method = ci,
+    test = route_test_arg(rope),
+    ...
+  )
+  if (!is.null(rope)) {
+    args$rope_range <- rope
+    args$rope_ci <- rope_ci
+  }
+  as.data.frame(do.call(parameters::model_parameters, args))
+}
+
+# The contract rows a parameters route builds from a `model_parameters()`
+# table: the rows in `terms` order, matched by `Parameter` and never by
+# position, the estimate read from the column the centrality names, the
+# optional columns read defensively. The diagnostics are the route's own
+# and are added by the caller.
+parameters_rows <- function(mp, terms, labels, centrality, ci, ci_level,
+                            rope) {
+  row <- match(terms, mp$Parameter)
+  group <- optional_column(mp, "Group", row)
+  # `Group` is "" on fixed rows (easystats' printing convenience); the
+  # contract's `group` says "no grouping" with NA.
+  group[!is.na(group) & !nzchar(group)] <- NA_character_
+
+  data.frame(
+    term = terms,
+    label = parameters_labels(mp, terms, group, labels),
+    estimate = mp[[route_estimate_column(centrality)]][row],
+    ci_low = mp$CI_low[row],
+    ci_high = mp$CI_high[row],
+    ci_method = ci,
+    ci_level = ci_level,
+    pd = mp$pd[row],
+    rope_pct = if (is.null(rope)) NA_real_ else mp$ROPE_Percentage[row],
+    component = optional_column(mp, "Component", row),
+    group = group,
+    effects = optional_column(mp, "Effects", row),
+    stringsAsFactors = FALSE
+  )
+}
+
 # The `test =` argument of both `describe_posterior()` and
 # `model_parameters()`: pd is always asked for, the ROPE only on request.
 route_test_arg <- function(rope) {

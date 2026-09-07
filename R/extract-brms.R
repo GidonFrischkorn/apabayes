@@ -48,32 +48,12 @@ apa_tidy.brmsfit <- function(x,
   ci <- rlang::arg_match(ci)
   rope <- check_route_args(ci_level, diagnostics, rope, rope_ci)
 
-  mp <- brms_model_parameters(
-    x, effects, component, centrality, ci, ci_level, rope, rope_ci
+  mp <- call_model_parameters(
+    x, centrality, ci, ci_level, rope, rope_ci,
+    effects = effects, component = component
   )
   terms <- resolve_parameters_variables(variables, mp$Parameter)
-  row <- match(terms, mp$Parameter)
-
-  group <- optional_column(mp, "Group", row)
-  # `Group` is "" on fixed rows (easystats' printing convenience); the
-  # contract's `group` says "no grouping" with NA.
-  group[!is.na(group) & !nzchar(group)] <- NA_character_
-
-  out <- data.frame(
-    term = terms,
-    label = parameters_labels(mp, terms, group, labels),
-    estimate = mp[[route_estimate_column(centrality)]][row],
-    ci_low = mp$CI_low[row],
-    ci_high = mp$CI_high[row],
-    ci_method = ci,
-    ci_level = ci_level,
-    pd = mp$pd[row],
-    rope_pct = if (is.null(rope)) NA_real_ else mp$ROPE_Percentage[row],
-    component = optional_column(mp, "Component", row),
-    group = group,
-    effects = optional_column(mp, "Effects", row),
-    stringsAsFactors = FALSE
-  )
+  out <- parameters_rows(mp, terms, labels, centrality, ci, ci_level, rope)
   if (diagnostics) {
     out[c("rhat", "ess_bulk", "ess_tail")] <- brms_diagnostics(x, terms)
   }
@@ -85,27 +65,6 @@ apa_tidy.brmsfit <- function(x,
     rope = rope, rope_ci = rope_ci
   )
   rlang::exec(apabayes_tidy, out, !!!extra)
-}
-
-# The one `model_parameters()` call, with the arguments the method was
-# given. `rope_ci` and `rope_range` are passed only when a ROPE was asked
-# for, so the default call is exactly the easystats default call.
-brms_model_parameters <- function(x, effects, component, centrality, ci,
-                                  ci_level, rope, rope_ci) {
-  args <- list(
-    x,
-    centrality = centrality,
-    ci = ci_level,
-    ci_method = ci,
-    test = route_test_arg(rope),
-    effects = effects,
-    component = component
-  )
-  if (!is.null(rope)) {
-    args$rope_range <- rope
-    args$rope_ci <- rope_ci
-  }
-  as.data.frame(do.call(parameters::model_parameters, args))
 }
 
 # R-hat and both ESS columns. `model_parameters()` returns `ESS_tail`

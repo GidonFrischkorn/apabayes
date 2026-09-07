@@ -53,3 +53,32 @@ test_brms_fit <- function(name = c("full", "reduced", "mixed")) {
   .apabayes_fit_cache[[name]] <- fit
   fit
 }
+
+# The stanreg fits of the stanreg route (spec-apa_tidy_stanreg.md): the
+# same two formulas as "full" and "mixed" above, through rstanarm. They
+# need no compilation and take 0.1 s and 0.5 s (measured), but stay
+# off CRAN with the brms fits for the same reason: a fit made on the
+# test machine, never a checked-in one (decision 1).
+test_stanreg_fit <- function(name = c("full", "mixed")) {
+  name <- match.arg(name)
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("rstanarm")
+  key <- paste0("stanreg_", name)
+  if (!is.null(.apabayes_fit_cache[[key]])) {
+    return(.apabayes_fit_cache[[key]])
+  }
+  data <- mtcars
+  data$cyl_f <- factor(data$cyl)
+  fit <- switch(name,
+    full = rstanarm::stan_glm(
+      mpg ~ wt + am,
+      data = data, chains = 2, iter = 1000, seed = 1, refresh = 0
+    ),
+    mixed = rstanarm::stan_glmer(
+      mpg ~ wt + (1 | cyl_f),
+      data = data, chains = 2, iter = 1000, seed = 1, refresh = 0
+    )
+  )
+  .apabayes_fit_cache[[key]] <- fit
+  fit
+}
