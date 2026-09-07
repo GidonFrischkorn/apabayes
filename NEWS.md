@@ -1,5 +1,10 @@
 # apabayes 0.0.0.9000
 
+* internal: the brmsfit route's label derivation, optional-column
+  reading and `variables =` resolution move to `R/extract-shared.R` as
+  `parameters_labels()`, `optional_column()` and
+  `resolve_parameters_variables()`, ahead of the stanreg route that uses
+  them unchanged. No behaviour change.
 * fix: `apa_tidy(fit, effects = "random")` on a model without random
   effects now says so ("`effects` is "random", but `x` has no random
   effects.") instead of surfacing easystats' `'by' must specify a

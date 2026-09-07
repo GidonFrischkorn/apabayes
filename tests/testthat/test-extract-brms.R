@@ -269,7 +269,7 @@ test_that("an empty selection is named as such, not as a missing term", {
   # Folded into the unknown-term branch, this reported `NA` as the term
   # that could not be found.
   message <- tryCatch(
-    resolve_brms_variables(character(), c("b_Intercept", "b_wt")),
+    resolve_parameters_variables(character(), c("b_Intercept", "b_wt")),
     error = conditionMessage
   )
 
@@ -404,14 +404,14 @@ test_that("labels fall back to the term when pretty_names is absent", {
   terms <- mp$Parameter
 
   expect_identical(
-    brms_labels(mp, terms, rep(NA_character_, 2), NULL),
+    parameters_labels(mp, terms, rep(NA_character_, 2), NULL),
     terms
   )
 })
 
 test_that("a selection with no reportable parameter aborts", {
   expect_error(
-    resolve_brms_variables(NULL, character()),
+    resolve_parameters_variables(NULL, character()),
     "no parameters to report"
   )
 })

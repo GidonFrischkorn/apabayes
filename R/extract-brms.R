@@ -51,17 +51,17 @@ apa_tidy.brmsfit <- function(x,
   mp <- brms_model_parameters(
     x, effects, component, centrality, ci, ci_level, rope, rope_ci
   )
-  terms <- resolve_brms_variables(variables, mp$Parameter)
+  terms <- resolve_parameters_variables(variables, mp$Parameter)
   row <- match(terms, mp$Parameter)
 
-  group <- brms_optional_column(mp, "Group", row)
+  group <- optional_column(mp, "Group", row)
   # `Group` is "" on fixed rows (easystats' printing convenience); the
   # contract's `group` says "no grouping" with NA.
   group[!is.na(group) & !nzchar(group)] <- NA_character_
 
   out <- data.frame(
     term = terms,
-    label = brms_labels(mp, terms, group, labels),
+    label = parameters_labels(mp, terms, group, labels),
     estimate = mp[[route_estimate_column(centrality)]][row],
     ci_low = mp$CI_low[row],
     ci_high = mp$CI_high[row],
@@ -69,9 +69,9 @@ apa_tidy.brmsfit <- function(x,
     ci_level = ci_level,
     pd = mp$pd[row],
     rope_pct = if (is.null(rope)) NA_real_ else mp$ROPE_Percentage[row],
-    component = brms_optional_column(mp, "Component", row),
+    component = optional_column(mp, "Component", row),
     group = group,
-    effects = brms_optional_column(mp, "Effects", row),
+    effects = optional_column(mp, "Effects", row),
     stringsAsFactors = FALSE
   )
   if (diagnostics) {
@@ -108,16 +108,6 @@ brms_model_parameters <- function(x, effects, component, centrality, ci,
   as.data.frame(do.call(parameters::model_parameters, args))
 }
 
-# `Effects` and `Group` exist only when the model has random effects and
-# `effects = "all"` (measured); `Component` is always there. A column that
-# is absent is the typed NA, not an error.
-brms_optional_column <- function(mp, name, row) {
-  if (!name %in% names(mp)) {
-    return(rep(NA_character_, length(row)))
-  }
-  as.character(mp[[name]])[row]
-}
-
 # R-hat and both ESS columns. `model_parameters()` returns `ESS_tail`
 # only, so this is a second call; `diagnostic_posterior()`'s default omits
 # `sigma`, so it is called with effects = "all", component = "all"; and
@@ -134,73 +124,6 @@ brms_diagnostics <- function(x, terms) {
     ess_bulk = dp$ESS_bulk[row],
     ess_tail = dp$ESS_tail[row]
   )
-}
-
-# The display label. `pretty_names` is a character vector named by
-# `Parameter`, so it is looked up by name; its values are not unique
-# (`b_Intercept` and `sd_cyl_f__Intercept` are both "(Intercept)"), and
-# two rows with the same label would break the term-or-label addressing
-# of the inline layer. A duplicated label is therefore qualified with its
-# group, and falls back to the term if that still does not separate it.
-brms_labels <- function(mp, terms, group, labels) {
-  pretty <- attr(mp, "pretty_names")
-  out <- if (is.character(pretty) && !is.null(names(pretty))) {
-    unname(pretty[terms])
-  } else {
-    rep(NA_character_, length(terms))
-  }
-  out[is.na(out)] <- terms[is.na(out)]
-
-  repeated <- out %in% out[duplicated(out)]
-  qualify <- repeated & !is.na(group)
-  out[qualify] <- sprintf("%s (%s)", out[qualify], group[qualify])
-  repeated <- out %in% out[duplicated(out)]
-  out[repeated] <- terms[repeated]
-
-  if (is.null(labels)) {
-    return(out)
-  }
-  named <- resolve_draws_labels(labels, terms)
-  out[named != terms] <- named[named != terms]
-  out
-}
-
-resolve_brms_variables <- function(variables, available,
-                                   call = rlang::caller_env()) {
-  if (length(available) == 0) {
-    cli::cli_abort("{.arg x} has no parameters to report.", call = call)
-  }
-  if (is.null(variables)) {
-    return(available)
-  }
-  if (!is.character(variables)) {
-    cli::cli_abort(
-      "{.arg variables} must be a character vector or NULL, not
-       {.cls {class(variables)}}.",
-      call = call
-    )
-  }
-  # Checked before `unknown`: an empty selection has no offending term to
-  # name, and folding it into the branch below reported `NA` as the term
-  # that was not found.
-  if (length(variables) == 0) {
-    cli::cli_abort(
-      "{.arg variables} selects no parameter to report.",
-      call = call
-    )
-  }
-  unknown <- setdiff(variables, available)
-  if (length(unknown) > 0) {
-    cli::cli_abort(
-      c(
-        "{.arg variables} must name reported parameters;
-         {.val {unknown[1]}} is not one.",
-        i = "Available: {.val {available}}."
-      ),
-      call = call
-    )
-  }
-  variables
 }
 
 # ---- the diagnostics table ---------------------------------------------

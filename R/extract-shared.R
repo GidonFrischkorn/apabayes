@@ -81,6 +81,90 @@ package_versions_of <- function(packages) {
   )
 }
 
+# A column of a `model_parameters()` table that may or may not exist:
+# `Effects` and `Group` appear only when the model has random effects and
+# `effects = "all"`, and `Component` only when a component was asked for
+# (measured on brmsfit and stanreg). An absent column is the typed NA,
+# not an error.
+optional_column <- function(mp, name, row) {
+  if (!name %in% names(mp)) {
+    return(rep(NA_character_, length(row)))
+  }
+  as.character(mp[[name]])[row]
+}
+
+# The display label of a `model_parameters()` row. `pretty_names` is a
+# character vector named by `Parameter`, so it is looked up by name; its
+# values are not unique (`b_Intercept` and `sd_cyl_f__Intercept` are both
+# "(Intercept)" on brmsfit, `(Intercept)` and `Sigma[...]` on stanreg),
+# and two rows with the same label would break the term-or-label
+# addressing of the inline layer. A duplicated label is therefore
+# qualified with its group, and falls back to the term if that still does
+# not separate it.
+parameters_labels <- function(mp, terms, group, labels) {
+  pretty <- attr(mp, "pretty_names")
+  out <- if (is.character(pretty) && !is.null(names(pretty))) {
+    unname(pretty[terms])
+  } else {
+    rep(NA_character_, length(terms))
+  }
+  out[is.na(out)] <- terms[is.na(out)]
+
+  repeated <- out %in% out[duplicated(out)]
+  qualify <- repeated & !is.na(group)
+  out[qualify] <- sprintf("%s (%s)", out[qualify], group[qualify])
+  repeated <- out %in% out[duplicated(out)]
+  out[repeated] <- terms[repeated]
+
+  if (is.null(labels)) {
+    return(out)
+  }
+  named <- resolve_draws_labels(labels, terms)
+  out[named != terms] <- named[named != terms]
+  out
+}
+
+# The `variables =` selection of a parameters route: `NULL` keeps every
+# row easystats returned, in its order; names are matched verbatim
+# against `Parameter`.
+resolve_parameters_variables <- function(variables, available,
+                                         call = rlang::caller_env()) {
+  if (length(available) == 0) {
+    cli::cli_abort("{.arg x} has no parameters to report.", call = call)
+  }
+  if (is.null(variables)) {
+    return(available)
+  }
+  if (!is.character(variables)) {
+    cli::cli_abort(
+      "{.arg variables} must be a character vector or NULL, not
+       {.cls {class(variables)}}.",
+      call = call
+    )
+  }
+  # Checked before `unknown`: an empty selection has no offending term to
+  # name, and folding it into the branch below reported `NA` as the term
+  # that was not found.
+  if (length(variables) == 0) {
+    cli::cli_abort(
+      "{.arg variables} selects no parameter to report.",
+      call = call
+    )
+  }
+  unknown <- setdiff(variables, available)
+  if (length(unknown) > 0) {
+    cli::cli_abort(
+      c(
+        "{.arg variables} must name reported parameters;
+         {.val {unknown[1]}} is not one.",
+        i = "Available: {.val {available}}."
+      ),
+      call = call
+    )
+  }
+  variables
+}
+
 # The `test =` argument of both `describe_posterior()` and
 # `model_parameters()`: pd is always asked for, the ROPE only on request.
 route_test_arg <- function(rope) {
