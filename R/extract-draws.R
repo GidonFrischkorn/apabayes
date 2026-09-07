@@ -123,40 +123,22 @@ apa_tidy.draws <- function(x,
   rlang::check_installed("posterior", reason = "to read draws objects.")
   centrality <- rlang::arg_match(centrality)
   ci <- rlang::arg_match(ci)
-  check_ci_level(ci_level, allow_na = FALSE, strict = TRUE)
-  check_flag(diagnostics)
-  rope <- check_rope(rope)
-  if (!is.null(rope)) {
-    check_rope_ci(rope_ci)
-  }
+  rope <- check_route_args(ci_level, diagnostics, rope, rope_ci)
 
   terms <- resolve_draws_variables(variables, posterior::variables(x))
   selected <- posterior::subset_draws(x, variable = terms)
 
-  args <- list(
-    selected,
-    centrality = centrality,
-    ci = ci_level,
-    ci_method = ci,
-    test = if (is.null(rope)) "pd" else c("pd", "rope")
+  described <- describe_draws(
+    selected, centrality, ci, ci_level, rope, rope_ci
   )
-  if (!is.null(rope)) {
-    args$rope_range <- rope
-    args$rope_ci <- rope_ci
-  }
-  described <- as.data.frame(do.call(bayestestR::describe_posterior, args))
   # describe_posterior() keeps the variable order but permutes the row
   # names (measured), so rows are matched by name, never by position.
   row <- match(terms, described$Parameter)
-  estimate_col <- switch(centrality,
-    median = "Median",
-    mean = "Mean"
-  )
 
   out <- data.frame(
     term = terms,
     label = resolve_draws_labels(labels, terms),
-    estimate = described[[estimate_col]][row],
+    estimate = described[[route_estimate_column(centrality)]][row],
     ci_low = described$CI_low[row],
     ci_high = described$CI_high[row],
     ci_method = ci,
@@ -171,35 +153,49 @@ apa_tidy.draws <- function(x,
   )
 
   if (diagnostics) {
-    summarised <- as.data.frame(posterior::summarise_draws(
-      selected, "rhat", "ess_bulk", "ess_tail"
-    ))
-    drow <- match(terms, summarised$variable)
-    out$rhat <- summarised$rhat[drow]
-    out$ess_bulk <- summarised$ess_bulk[drow]
-    out$ess_tail <- summarised$ess_tail[drow]
+    out[c("rhat", "ess_bulk", "ess_tail")] <- draws_diagnostics(
+      selected, terms
+    )
   }
 
-  extra <- list(
-    type = "parameters",
-    centrality = centrality,
-    ci_method = ci,
-    ci_level = ci_level,
+  extra <- parameters_attributes(
+    centrality, ci, ci_level,
     source_class = class(x),
-    package_versions = draws_package_versions()
+    packages = c("posterior", "bayestestR", "apabayes"),
+    rope = rope, rope_ci = rope_ci
   )
-  if (!is.null(rope)) {
-    extra$rope_range <- rope
-    extra$rope_ci <- rope_ci
-  }
   rlang::exec(apabayes_tidy, out, !!!extra)
 }
 
-draws_package_versions <- function() {
-  vapply(
-    c("posterior", "bayestestR", "apabayes"),
-    function(pkg) as.character(utils::packageVersion(pkg)),
-    character(1)
+# The one `describe_posterior()` call, with the arguments the method was
+# given; the ROPE arguments are passed only when a ROPE was asked for.
+describe_draws <- function(selected, centrality, ci, ci_level, rope,
+                           rope_ci) {
+  args <- list(
+    selected,
+    centrality = centrality,
+    ci = ci_level,
+    ci_method = ci,
+    test = route_test_arg(rope)
+  )
+  if (!is.null(rope)) {
+    args$rope_range <- rope
+    args$rope_ci <- rope_ci
+  }
+  as.data.frame(do.call(bayestestR::describe_posterior, args))
+}
+
+# R-hat and both ESS columns, matched to the requested terms by name.
+draws_diagnostics <- function(selected, terms) {
+  summarised <- as.data.frame(posterior::summarise_draws(
+    selected, "rhat", "ess_bulk", "ess_tail"
+  ))
+  row <- match(terms, summarised$variable)
+  data.frame(
+    rhat = summarised$rhat[row],
+    ess_bulk = summarised$ess_bulk[row],
+    ess_tail = summarised$ess_tail[row],
+    stringsAsFactors = FALSE
   )
 }
 

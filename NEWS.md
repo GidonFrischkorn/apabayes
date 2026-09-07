@@ -1,5 +1,11 @@
 # apabayes 0.0.0.9000
 
+* internal: the shape every parameters route repeats — check the
+  reporting arguments, call easystats once, match rows by name, assemble
+  the contract columns — moves into `R/extract-shared.R`, and the
+  `apabayes_tidy()` constructor splits out its input checks and its
+  column assembly. No behaviour change: the same 585 tests pass either
+  side of the refactor.
 * feat: `apa_tidy()` gains a `brmsfit` method, the second route of the
   extract layer. Estimates, interval, pd and the optional ROPE come from
   `parameters::model_parameters()`; because that call returns no

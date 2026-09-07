@@ -247,29 +247,19 @@ apabayes_tidy <- function(x,
                           ci_level = 0.95,
                           source_class = NA_character_,
                           package_versions = character()) {
+  # Checked before `...` is forced, so that a non-data-frame `x` is still
+  # reported ahead of anything that errors while evaluating `...`.
   if (!is.data.frame(x)) {
     cli::cli_abort("{.arg x} must be a data frame, not {.cls {class(x)}}.")
   }
   # `...` sits before the named arguments so that an unnamed extra cannot
   # be absorbed positionally by `type`; everything but `x` is named.
   extra_attrs <- rlang::list2(...)
-  unnamed_attrs <- length(extra_attrs) > 0 &&
-    (is.null(names(extra_attrs)) || any(!nzchar(names(extra_attrs))))
-  if (unnamed_attrs) {
-    cli::cli_abort(c(
-      "Every attribute passed through {.arg ...} must be named.",
-      i = "Every argument of {.fn apabayes_tidy} except {.arg x} is named."
-    ))
-  }
+  check_tidy_constructor_args(extra_attrs, package_versions)
   type <- rlang::arg_match(type)
   centrality <- rlang::arg_match(centrality)
   check_ci_method(ci_method)
   check_ci_level(ci_level)
-  bad_versions <- length(package_versions) > 0 &&
-    (!is.character(package_versions) || is.null(names(package_versions)))
-  if (bad_versions) {
-    cli::cli_abort("{.arg package_versions} must be a named character vector.")
-  }
 
   contract <- tidy_contracts()[[type]]
   missing <- setdiff(contract$required, names(x))
@@ -281,6 +271,54 @@ apabayes_tidy <- function(x,
     ))
   }
 
+  cols <- assemble_tidy_columns(x, contract, type, ci_method, ci_level)
+  out <- tibble::new_tibble(cols, nrow = nrow(x), class = "apabayes_tidy")
+  attributes_to_set <- c(
+    list(
+      type = type,
+      centrality = centrality,
+      ci_method = ci_method,
+      ci_level = ci_level,
+      source_class = source_class,
+      package_versions = package_versions
+    ),
+    extra_attrs
+  )
+  for (nm in names(attributes_to_set)) {
+    attr(out, nm) <- attributes_to_set[[nm]]
+  }
+  validate_apabayes_tidy(out)
+  # Not `validate_apabayes_tidy(out)` as the last expression: it returns
+  # invisibly, and the constructor's value must be visible so that a bare
+  # `apabayes_tidy(x)` reaches `print.apabayes_tidy()`.
+  out
+}
+
+# The constructor's remaining input checks, in the order it reported them
+# before they were extracted. The data-frame check stays in the
+# constructor: it must run before `...` is forced.
+check_tidy_constructor_args <- function(extra_attrs, package_versions) {
+  unnamed_attrs <- length(extra_attrs) > 0 &&
+    (is.null(names(extra_attrs)) || any(!nzchar(names(extra_attrs))))
+  if (unnamed_attrs) {
+    cli::cli_abort(c(
+      "Every attribute passed through {.arg ...} must be named.",
+      i = "Every argument of {.fn apabayes_tidy} except {.arg x} is named."
+    ))
+  }
+  bad_versions <- length(package_versions) > 0 &&
+    (!is.character(package_versions) || is.null(names(package_versions)))
+  if (bad_versions) {
+    cli::cli_abort("{.arg package_versions} must be a named character vector.")
+  }
+  invisible(NULL)
+}
+
+# The contract's columns, in contract order, then whatever else the caller
+# supplied. A column the caller gave is coerced to the contract's type; a
+# column the contract seeds (`ci_method`, `ci_level`) is recycled from the
+# constructor's argument; anything else is the typed NA.
+assemble_tidy_columns <- function(x, contract, type, ci_method, ci_level) {
   n <- nrow(x)
   seeds <- list(ci_method = ci_method, ci_level = ci_level)
   cols <- list()
@@ -302,22 +340,7 @@ apabayes_tidy <- function(x,
   for (nm in setdiff(names(x), names(contract$columns))) {
     cols[[nm]] <- x[[nm]]
   }
-
-  out <- tibble::new_tibble(cols, nrow = n, class = "apabayes_tidy")
-  attr(out, "type") <- type
-  attr(out, "centrality") <- centrality
-  attr(out, "ci_method") <- ci_method
-  attr(out, "ci_level") <- ci_level
-  attr(out, "source_class") <- source_class
-  attr(out, "package_versions") <- package_versions
-  for (nm in names(extra_attrs)) {
-    attr(out, nm) <- extra_attrs[[nm]]
-  }
-  validate_apabayes_tidy(out)
-  # Not `validate_apabayes_tidy(out)` as the last expression: it returns
-  # invisibly, and the constructor's value must be visible so that a bare
-  # `apabayes_tidy(x)` reaches `print.apabayes_tidy()`.
-  out
+  cols
 }
 
 #' @rdname apabayes_tidy

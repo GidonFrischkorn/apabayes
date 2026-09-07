@@ -43,12 +43,7 @@ apa_tidy.brmsfit <- function(x,
   effects <- rlang::arg_match(effects)
   centrality <- rlang::arg_match(centrality)
   ci <- rlang::arg_match(ci)
-  check_ci_level(ci_level, allow_na = FALSE, strict = TRUE)
-  check_flag(diagnostics)
-  rope <- check_rope(rope)
-  if (!is.null(rope)) {
-    check_rope_ci(rope_ci)
-  }
+  rope <- check_route_args(ci_level, diagnostics, rope, rope_ci)
 
   mp <- brms_model_parameters(
     x, effects, component, centrality, ci, ci_level, rope, rope_ci
@@ -64,10 +59,7 @@ apa_tidy.brmsfit <- function(x,
   out <- data.frame(
     term = terms,
     label = brms_labels(mp, terms, group, labels),
-    estimate = mp[[switch(centrality,
-      median = "Median",
-      mean = "Mean"
-    )]][row],
+    estimate = mp[[route_estimate_column(centrality)]][row],
     ci_low = mp$CI_low[row],
     ci_high = mp$CI_high[row],
     ci_method = ci,
@@ -83,20 +75,12 @@ apa_tidy.brmsfit <- function(x,
     out[c("rhat", "ess_bulk", "ess_tail")] <- brms_diagnostics(x, terms)
   }
 
-  extra <- list(
-    type = "parameters",
-    centrality = centrality,
-    ci_method = ci,
-    ci_level = ci_level,
+  extra <- parameters_attributes(
+    centrality, ci, ci_level,
     source_class = class(x),
-    package_versions = package_versions_of(
-      c("brms", "parameters", "bayestestR", "apabayes")
-    )
+    packages = c("brms", "parameters", "bayestestR", "apabayes"),
+    rope = rope, rope_ci = rope_ci
   )
-  if (!is.null(rope)) {
-    extra$rope_range <- rope
-    extra$rope_ci <- rope_ci
-  }
   rlang::exec(apabayes_tidy, out, !!!extra)
 }
 
@@ -110,7 +94,7 @@ brms_model_parameters <- function(x, effects, component, centrality, ci,
     centrality = centrality,
     ci = ci_level,
     ci_method = ci,
-    test = if (is.null(rope)) "pd" else c("pd", "rope"),
+    test = route_test_arg(rope),
     effects = effects,
     component = component
   )
@@ -214,13 +198,6 @@ resolve_brms_variables <- function(variables, available,
     )
   }
   variables
-}
-
-package_versions_of <- function(pkgs) {
-  vapply(
-    pkgs, function(pkg) as.character(utils::packageVersion(pkg)),
-    character(1)
-  )
 }
 
 # ---- the diagnostics table ---------------------------------------------
