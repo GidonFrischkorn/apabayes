@@ -23,6 +23,7 @@ Depends:
 Imports:
     bayestestR,
     cli,
+    parameters,
     rlang,
     tibble,
     utils

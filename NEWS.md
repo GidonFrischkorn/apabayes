@@ -1,5 +1,21 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` gains a `brmsfit` method, the second route of the
+  extract layer. Estimates, interval, pd and the optional ROPE come from
+  `parameters::model_parameters()`; because that call returns no
+  `ESS_bulk` column, R-hat and both ESS columns come from a second call
+  to `bayestestR::diagnostic_posterior()`, joined by parameter name
+  rather than by position (its row order differs and its default omits
+  `sigma`). The `effects` and `group` columns are read defensively: they
+  exist only for a model with random effects, and `""` becomes `NA`.
+  Display labels come from the `pretty_names` attribute, disambiguated by
+  group where two parameters share a label, so the inline layer's
+  term-or-label addressing stays unique.
+* feat: `apa_tidy_diagnostics()`, a generic for convergence diagnostics
+  alone, with a coercing `default` method for anything
+  `posterior::as_draws_df()` accepts and a `runjags` method. Its tables
+  carry no interval, so `ci_method` and `ci_level` are `NA` and the print
+  header does not claim an interval that is not there.
 * feat: extract layer, tidy contract and draws route (Milestone 2).
   `apabayes_tidy()` builds the object the extract layer hands to the
   format, inline and table layers: a tibble whose columns are fixed by
