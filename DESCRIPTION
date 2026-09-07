@@ -29,9 +29,11 @@ Imports:
     tibble,
     utils
 Suggests:
+    blavaan,
     brms,
     effectsize,
     knitr,
+    lavaan,
     papaja,
     posterior,
     rstanarm,

@@ -123,7 +123,8 @@ parameters_labels <- function(mp, terms, group, labels) {
     return(out)
   }
   named <- resolve_draws_labels(labels, terms)
-  out[named != terms] <- named[named != terms]
+  hit <- resolve_labels_positions(labels, terms)
+  out[hit] <- named[hit]
   out
 }
 

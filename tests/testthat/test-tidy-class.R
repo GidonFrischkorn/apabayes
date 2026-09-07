@@ -146,6 +146,41 @@ test_that("NA is allowed for ci_method and ci_level", {
   expect_true(all(is.na(out$ci_level)))
 })
 
+test_that("centrality = NA marks an estimate that is no posterior summary", {
+  # Added with the lavaan route: a maximum-likelihood estimate is neither
+  # a median nor a mean, and the header must not claim one.
+  out <- apabayes_tidy(minimal(), centrality = NA)
+
+  expect_identical(attr(out, "centrality"), NA_character_)
+  expect_identical(validate_apabayes_tidy(out), out)
+  header <- utils::capture.output(print(out))[2]
+  expect_no_match(header, "median")
+  expect_match(header, "95% CrI", fixed = TRUE)
+
+  edited <- out
+  attr(edited, "centrality") <- "mode"
+  expect_error(validate_apabayes_tidy(edited), "centrality")
+})
+
+test_that("wald and boot are confidence intervals the contract knows", {
+  wald <- apabayes_tidy(minimal(), ci_method = "wald", centrality = NA)
+  boot <- apabayes_tidy(minimal(), ci_method = "boot", centrality = NA)
+
+  expect_identical(wald$ci_method, c("wald", "wald"))
+  expect_identical(attr(boot, "ci_method"), "boot")
+  expect_match(
+    utils::capture.output(print(wald))[2], "95% CI (Wald)",
+    fixed = TRUE
+  )
+  expect_match(
+    utils::capture.output(print(boot))[2], "95% CI (percentile bootstrap)",
+    fixed = TRUE
+  )
+  # The open question for Gidon (ARCHITECTURE.md): not added.
+  expect_error(apabayes_tidy(minimal(), ci_method = "spi"), "ci_method")
+  expect_error(apabayes_tidy(minimal(), ci_method = "bci"), "ci_method")
+})
+
 test_that("the validator is the entry point for a classed object", {
   out <- apabayes_tidy(minimal())
 

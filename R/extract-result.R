@@ -150,7 +150,9 @@ result_centrality <- function(mp, centrality, call = rlang::caller_env()) {
 }
 
 # `ci_method` is an attribute of both producers, in different case
-# (measured point 5); `spi` and `bci` have no name in the contract.
+# (measured point 5); `spi` and `bci` have no name in the contract, and
+# this route reports credible intervals only, so the frequentist values
+# the contract gained with the lavaan route are not accepted here either.
 result_ci_method <- function(x, call = rlang::caller_env()) {
   method <- attr(x, "ci_method", exact = TRUE)
   if (!is.character(method) || length(method) != 1) {
@@ -162,8 +164,8 @@ result_ci_method <- function(x, call = rlang::caller_env()) {
   method <- tolower(method)
   if (!method %in% c("eti", "hdi")) {
     cli::cli_abort(
-      "{.arg x} reports a {.val {method}} interval; the tidy contract
-       knows {.val eti} and {.val hdi}.",
+      "{.arg x} reports a {.val {method}} interval; this route reports
+       {.val eti} and {.val hdi}.",
       call = call
     )
   }

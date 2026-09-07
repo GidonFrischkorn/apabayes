@@ -36,6 +36,15 @@
 #' # the interval, its method and the ROPE are read off the object, not
 #' # recomputed, so those are not arguments here.
 #' apa_tidy(bayestestR::describe_posterior(draws))
+#' @examplesIf rlang::is_installed("lavaan")
+#'
+#' # A lavaan fit: a maximum-likelihood estimate with a Wald interval and
+#' # a p value, so `centrality` is NA and `ci_method` is "wald".
+#' fit <- lavaan::cfa(
+#'   "visual =~ x1 + x2 + x3",
+#'   data = lavaan::HolzingerSwineford1939
+#' )
+#' apa_tidy(fit, component = "loading", standardize = TRUE)
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")
@@ -283,6 +292,18 @@ resolve_draws_labels <- function(labels, terms, call = rlang::caller_env()) {
   out <- terms
   out[match(hit, terms)] <- unname(labels[hit])
   out
+}
+
+# Which reported terms `labels =` names, as an index into `terms`. A route
+# whose derived label is not the term itself (the SEM routes: `visual =~
+# x1` against `visual=~x1`) has to know this apart from the substituted
+# vector. Reading it back as "wherever the substitution differs from the
+# term" would silently drop `labels = c("visual=~x1" = "visual=~x1")`,
+# which asks for the unspaced name and is not a no-op there.
+# `NULL` needs no branch: `intersect(names(NULL), terms)` is empty, and
+# both callers return before this on a NULL `labels` anyway.
+resolve_labels_positions <- function(labels, terms) {
+  match(intersect(names(labels), terms), terms)
 }
 
 check_rope <- function(rope, call = rlang::caller_env()) {

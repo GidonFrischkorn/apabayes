@@ -116,10 +116,34 @@ check_ci_method <- function(x, allow_na = TRUE, call = rlang::caller_env()) {
   if (allow_na && length(x) == 1 && is.na(x)) {
     return(invisible(NA_character_))
   }
-  if (!(is.character(x) && length(x) == 1 && x %in% c("eti", "hdi", "hpd"))) {
+  if (!(is.character(x) && length(x) == 1 && x %in% ci_methods())) {
     cli::cli_abort(
-      '{.arg ci_method} must be one of "eti", "hdi" or "hpd", not
-       {.val {x}}.',
+      '{.arg ci_method} must be one of "eti", "hdi", "hpd", "wald" or
+       "boot", not {.val {x}}.',
+      call = call
+    )
+  }
+  invisible(x)
+}
+
+# The interval types the contract knows: three credible intervals and,
+# since the lavaan route, two confidence intervals (Wald on standard or
+# robust SEs; percentile bootstrap). `spi` and `bci` are deliberately
+# absent (ARCHITECTURE.md § Open items).
+ci_methods <- function() c("eti", "hdi", "hpd", "wald", "boot")
+
+# `centrality` is "median" or "mean" for a posterior summary and NA for a
+# point estimate that is not one (the lavaan route). NA is a value here,
+# not an absence: the print header omits the part, and the format layer
+# picks the estimate label from it.
+check_centrality <- function(x, call = rlang::caller_env()) {
+  if (length(x) == 1 && is.na(x)) {
+    return(invisible(NA_character_))
+  }
+  ok <- is.character(x) && length(x) == 1 && x %in% c("median", "mean")
+  if (!ok) {
+    cli::cli_abort(
+      '{.arg centrality} must be "median", "mean" or NA, not {.val {x}}.',
       call = call
     )
   }
@@ -127,7 +151,7 @@ check_ci_method <- function(x, allow_na = TRUE, call = rlang::caller_env()) {
 }
 
 check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
-                           call = rlang::caller_env()) {
+                           arg = "ci_level", call = rlang::caller_env()) {
   if (allow_na && length(x) == 1 && is.na(x)) {
     return(invisible(NA_real_))
   }
@@ -137,7 +161,7 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
     # nolint next: object_usage_linter. Used in the cli string below.
     bound <- if (strict) "strictly less than 1" else "at most 1"
     cli::cli_abort(
-      "{.arg ci_level} must be a single number greater than 0 and
+      "{.arg {arg}} must be a single number greater than 0 and
        {bound}.",
       call = call
     )
@@ -170,7 +194,9 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #'   \item{`estimate`}{double; the posterior median or mean, per the
 #'     `centrality` attribute.}
 #'   \item{`ci_low`, `ci_high`}{double; interval bounds.}
-#'   \item{`ci_method`}{character; `"eti"`, `"hdi"` or `"hpd"`.}
+#'   \item{`ci_method`}{character; `"eti"`, `"hdi"` or `"hpd"` for a
+#'     credible interval, `"wald"` or `"boot"` (percentile bootstrap) for
+#'     a frequentist confidence interval (lavaan).}
 #'   \item{`ci_level`}{double; the interval mass, e.g. `0.95`.}
 #'   \item{`pd`}{double; probability of direction.}
 #'   \item{`rope_pct`}{double; percentage of the posterior inside the
@@ -209,9 +235,11 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' @param type Which column contract applies: one of `"parameters"`,
 #'   `"diagnostics"`, `"hypotheses"`, `"loo"`, `"bf_models"`,
 #'   `"sem_fit"`, `"contrasts"`.
-#' @param centrality `"median"` or `"mean"`; what `estimate` holds.
-#' @param ci_method `"eti"`, `"hdi"`, `"hpd"` or `NA`; seeds the
-#'   `ci_method` column when the caller supplies none.
+#' @param centrality `"median"` or `"mean"`; what `estimate` holds. `NA`
+#'   when the estimate is not a posterior summary (a lavaan
+#'   maximum-likelihood estimate).
+#' @param ci_method `"eti"`, `"hdi"`, `"hpd"`, `"wald"`, `"boot"` or
+#'   `NA`; seeds the `ci_method` column when the caller supplies none.
 #' @param ci_level A number in (0, 1] or `NA`; seeds the `ci_level`
 #'   column the same way.
 #' @param source_class Character; `class()` of the object the numbers
@@ -257,7 +285,16 @@ apabayes_tidy <- function(x,
   extra_attrs <- rlang::list2(...)
   check_tidy_constructor_args(extra_attrs, package_versions)
   type <- rlang::arg_match(type)
-  centrality <- rlang::arg_match(centrality)
+  # NA is a value of `centrality` (a point estimate that is no posterior
+  # summary); `arg_match()` would reject it, so it is checked apart. The
+  # validator uses `check_centrality()` for the same domain: here the
+  # value is a user-facing argument and `arg_match()`'s "did you mean"
+  # earns its place, there it is a value already on the object.
+  centrality <- if (length(centrality) == 1 && is.na(centrality)) {
+    NA_character_
+  } else {
+    rlang::arg_match(centrality)
+  }
   check_ci_method(ci_method)
   check_ci_level(ci_level)
 
@@ -370,15 +407,7 @@ validate_apabayes_tidy <- function(x) {
   for (nm in names(contract$columns)) {
     coerce_tidy_column(x[[nm]], contract$columns[[nm]], nm, type)
   }
-  centrality <- attr(x, "centrality")
-  ok_centrality <- is.character(centrality) && length(centrality) == 1 &&
-    centrality %in% c("median", "mean")
-  if (!ok_centrality) {
-    cli::cli_abort(
-      '{.field centrality} must be "median" or "mean", not
-       {.val {centrality}}.'
-    )
-  }
+  check_centrality(attr(x, "centrality"))
   check_ci_method(attr(x, "ci_method"))
   check_ci_level(attr(x, "ci_level"))
   if ("pd" %in% names(x)) {
@@ -438,7 +467,9 @@ tidy_header_meta <- function(x) {
       switch(method,
         eti = "CrI (equal-tailed)",
         hdi = "HDI",
-        hpd = "HPD interval"
+        hpd = "HPD interval",
+        wald = "CI (Wald)",
+        boot = "CI (percentile bootstrap)"
       )
     ))
   }

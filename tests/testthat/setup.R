@@ -82,3 +82,84 @@ test_stanreg_fit <- function(name = c("full", "mixed")) {
   .apabayes_fit_cache[[key]] <- fit
   fit
 }
+
+# The lavaan fits of the lavaan route (spec-apa_tidy_lavaan.md). Unlike
+# the Stan fits these run on CRAN: lavaan needs no compiler and every fit
+# takes well under a second (measured), which is what ARCHITECTURE.md
+# § Tests planned. The bootstrap fit draws random samples, so it runs
+# under withr::with_seed(); nothing here calls set.seed().
+test_lavaan_fit <- function(name = "cfa") {
+  fits <- c(
+    "cfa", "sem", "means", "groups", "boot", "mlr", "nose", "nonconverged"
+  )
+  name <- match.arg(name, fits)
+  testthat::skip_if_not_installed("lavaan")
+  key <- paste0("lavaan_", name)
+  if (!is.null(.apabayes_fit_cache[[key]])) {
+    return(.apabayes_fit_cache[[key]])
+  }
+  hs <- "
+    visual  =~ x1 + x2 + x3
+    textual =~ x4 + x5 + x6
+    speed   =~ x7 + x8 + x9
+  "
+  # PoliticalDemocracy with labels, equality constraints and a defined
+  # parameter: the regression, correlation and defined components.
+  pd <- "
+    ind60 =~ x1 + x2 + x3
+    dem60 =~ y1 + a*y2 + b*y3 + c*y4
+    dem65 =~ y5 + a*y6 + b*y7 + c*y8
+    dem60 ~ ind60
+    dem65 ~ ind60 + dem60
+    y1 ~~ y5
+    ab := a*b
+  "
+  data <- lavaan::HolzingerSwineford1939
+  fit <- switch(name,
+    cfa = lavaan::cfa(hs, data = data),
+    sem = lavaan::sem(pd, data = lavaan::PoliticalDemocracy),
+    means = lavaan::cfa(hs, data = data, meanstructure = TRUE),
+    groups = lavaan::cfa(hs, data = data, group = "school"),
+    # 200 replicates: with fewer, the percentile interval's endpoints
+    # are the extreme order statistics and lavaan warns on every row.
+    boot = withr::with_seed(
+      1,
+      lavaan::cfa(hs, data = data, se = "bootstrap", bootstrap = 200)
+    ),
+    mlr = lavaan::cfa(hs, data = data, estimator = "MLR"),
+    nose = lavaan::cfa(hs, data = data, se = "none"),
+    nonconverged = suppressWarnings(
+      lavaan::cfa(hs, data = data, control = list(iter.max = 1))
+    )
+  )
+  .apabayes_fit_cache[[key]] <- fit
+  fit
+}
+
+# One small blavaan fit, for the guard of the lavaan route (a blavaan
+# object dispatches to `apa_tidy.lavaan()` unless refused, measured) and
+# for the blavaan route to come. Stan sampling, so off CRAN like the
+# brms fits. blavaan prints progress through the console and warns
+# about ESS at this size; neither is under test here. `bcfa()` builds an
+# unqualified `blavaan()` call and evaluates it in the caller's frame,
+# so the package is attached for the duration of the fit.
+test_blavaan_fit <- function() {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("blavaan")
+  if (!is.null(.apabayes_fit_cache[["blavaan"]])) {
+    return(.apabayes_fit_cache[["blavaan"]])
+  }
+  fit <- NULL
+  invisible(utils::capture.output(
+    fit <- withr::with_package("blavaan", suppressWarnings(suppressMessages(
+      blavaan::bcfa(
+        "visual =~ x1 + x2 + x3",
+        data = lavaan::HolzingerSwineford1939,
+        n.chains = 2, burnin = 200, sample = 200, seed = 1,
+        bcontrol = list(refresh = 0)
+      )
+    )))
+  ))
+  .apabayes_fit_cache[["blavaan"]] <- fit
+  fit
+}

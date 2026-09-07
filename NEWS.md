@@ -1,5 +1,41 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` gains a `lavaan` method, the extract layer's first
+  frequentist route, and `apa_tidy_sem_fit()` arrives with it as a
+  generic for the fit-index row (χ² with its df and p, CFI, TLI, RMSEA
+  with its interval, SRMR; `test = "scaled"` or `"robust"` picks
+  lavaan's variants, and a fit without a scaled test statistic is
+  refused rather than given one). Estimates, standard errors, the
+  interval and the p value come from `parameters::model_parameters()`
+  and the fit indices from `lavaan::fitMeasures()`; apabayes computes no
+  number of its own and nothing it prints judges a fit. `term` is
+  lavaan's own parameter name (`visual=~x1`, with the `.g2` suffix from
+  the second group of a multi-group fit) and `label` the same with
+  spaces, qualified by the group label where there is one. `component`
+  selects one or more of `"loading"`, `"regression"`, `"correlation"`,
+  `"variance"`, `"mean"` and `"defined"`, validated before easystats
+  sees it because a name it does not know silently yields zero rows.
+  `standardize` takes `TRUE` (`"std.all"`) or a lavaan type string, and
+  the `std` column records which solution the row is.
+* fix: a fixed parameter of a lavaan fit — a marker loading, or a latent
+  variance under `standardize` — reports `p = NA` as lavaan does.
+  `parameters` writes `p = 0` there (measured: `p[is.na(p)] <- 0` in its
+  source, on exactly the rows whose test statistic is `NA`), and a p
+  value of 0 for a parameter that was never tested reads as
+  significance. This is the one easystats number the route overrides,
+  and it restores the upstream value rather than computing one.
+* feat: the tidy contract gains `centrality = NA`, for a point estimate
+  that is no posterior summary, and `ci_method` gains `"wald"` and
+  `"boot"`. A lavaan fit gets a Wald interval, except that the
+  unstandardized solution of a fit with `se = "bootstrap"` gets the
+  percentile bootstrap interval and says so; the standardized solution
+  of that same fit is Wald again, because lavaan takes it through the
+  delta method.
+* fix: `labels =` is applied by which terms it names rather than by
+  which substitutions differ from the term. On a route whose derived
+  label is not the term itself — `visual =~ x1` against `visual=~x1` —
+  asking for the term as the label is a real request, and the old test
+  read it as no request at all.
 * feat: `apa_tidy()` reports an easystats **result object** — the table
   `bayestestR::describe_posterior()` or `parameters::model_parameters()`
   already computed — and not only a fitted model. Because every Bayesian
