@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# apabayes
+# apabayes <img src="man/figures/logo.png" align="right" height="139" alt="apabayes logo: a prior and a posterior density with their heights compared at zero" />
 
 <!-- badges: start -->
 <!-- badges: end -->
