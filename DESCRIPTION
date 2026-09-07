@@ -21,13 +21,19 @@ BugReports: https://github.com/GidonFrischkorn/apabayes/issues
 Depends:
     R (>= 4.3.0)
 Imports:
+    bayestestR,
     cli,
-    rlang
+    rlang,
+    tibble,
+    utils
 Suggests:
+    brms,
     effectsize,
     insight,
     knitr,
     papaja,
+    posterior,
+    runjags,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
