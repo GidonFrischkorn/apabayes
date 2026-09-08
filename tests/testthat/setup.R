@@ -136,30 +136,60 @@ test_lavaan_fit <- function(name = "cfa") {
   fit
 }
 
-# One small blavaan fit, for the guard of the lavaan route (a blavaan
-# object dispatches to `apa_tidy.lavaan()` unless refused, measured) and
-# for the blavaan route to come. Stan sampling, so off CRAN like the
-# brms fits. blavaan prints progress through the console and warns
-# about ESS at this size; neither is under test here. `bcfa()` builds an
-# unqualified `blavaan()` call and evaluates it in the caller's frame,
-# so the package is attached for the duration of the fit.
-test_blavaan_fit <- function() {
+# The blavaan fits of the blavaan route (spec-apa_tidy_blavaan.md), and
+# of the guard of the lavaan route (a blavaan object dispatches to
+# `apa_tidy.lavaan()` unless refused, measured). Stan sampling, so off
+# CRAN like the brms fits. blavaan prints progress through the console
+# and warns about ESS at this size; neither is under test here.
+# `bcfa()` builds an unqualified `blavaan()` call and evaluates it in
+# the caller's frame, so the package is attached for the duration of the
+# fit.
+#
+# `name` is:
+#   "one"     the one-factor fit (1.1 s), for the parameters method. Its
+#             three indicators make it *saturated*, so its fit indices
+#             are degenerate (BRMSEA exactly 0, `adjBGammaHat` upper
+#             bound 1.182, and blavaan warns that the effective number
+#             of parameters exceeds the sample statistics) — measured,
+#             which is why "two" exists.
+#   "two"     a two-factor fit (1.8 s), for the fit-index method: 13
+#             parameters, ppp .03, BRMSEA .094 [.071, .119].
+#   "groups"  a two-group fit (2.2 s), which the route refuses:
+#             `model_parameters()` aborts on one (measured).
+#   "notest"  `test = "none"` (0.5 s), which has no ppp and no fit
+#             indices but a working parameter table.
+test_blavaan_fit <- function(name = c("one", "two", "groups", "notest")) {
+  name <- match.arg(name)
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("blavaan")
-  if (!is.null(.apabayes_fit_cache[["blavaan"]])) {
-    return(.apabayes_fit_cache[["blavaan"]])
+  key <- paste0("blavaan_", name)
+  if (!is.null(.apabayes_fit_cache[[key]])) {
+    return(.apabayes_fit_cache[[key]])
   }
+  one <- "visual =~ x1 + x2 + x3"
+  two <- "
+    visual  =~ x1 + x2 + x3
+    textual =~ x4 + x5 + x6
+  "
+  args <- list(
+    if (name == "two") two else one,
+    data = lavaan::HolzingerSwineford1939,
+    n.chains = 2, burnin = 200, sample = 200, seed = 1,
+    bcontrol = list(refresh = 0)
+  )
+  if (name == "groups") args$group <- "school"
+  if (name == "notest") args$test <- "none"
   fit <- NULL
+  # `do.call("bcfa", ...)` by name, not `do.call(blavaan::bcfa, ...)`:
+  # bcfa() reads `as.character(match.call()[[1]])` to build the
+  # `blavaan()` call it evaluates, and a function object there is a
+  # closure it cannot coerce. The package is attached for the duration,
+  # so the name resolves.
   invisible(utils::capture.output(
     fit <- withr::with_package("blavaan", suppressWarnings(suppressMessages(
-      blavaan::bcfa(
-        "visual =~ x1 + x2 + x3",
-        data = lavaan::HolzingerSwineford1939,
-        n.chains = 2, burnin = 200, sample = 200, seed = 1,
-        bcontrol = list(refresh = 0)
-      )
+      do.call("bcfa", args)
     )))
   ))
-  .apabayes_fit_cache[["blavaan"]] <- fit
+  .apabayes_fit_cache[[key]] <- fit
   fit
 }

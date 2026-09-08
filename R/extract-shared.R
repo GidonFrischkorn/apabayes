@@ -119,6 +119,18 @@ parameters_labels <- function(mp, terms, group, labels) {
   repeated <- out %in% out[duplicated(out)]
   out[repeated] <- terms[repeated]
 
+  apply_label_overrides(out, labels, terms)
+}
+
+# `labels =` applied to a route's derived labels. Every route derives its
+# own (`pretty_names` here, the spaced parameter name on the two SEM
+# routes) and then lets `labels =` win on the terms it names.
+# `resolve_draws_labels()` validates the argument and does the
+# substitution; `resolve_labels_positions()` says where, which is not the
+# same as "wherever the substitution differs from the term" — on a route
+# whose derived label is not the term, `labels = c("visual=~x1" =
+# "visual=~x1")` is a real request.
+apply_label_overrides <- function(out, labels, terms) {
   if (is.null(labels)) {
     return(out)
   }

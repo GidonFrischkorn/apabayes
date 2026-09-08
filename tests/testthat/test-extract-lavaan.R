@@ -329,9 +329,13 @@ test_that("the Bayesian columns are typed NA on the lavaan route", {
 test_that("a blavaan fit is refused by the lavaan method", {
   # Measured: S3 dispatch on the S4 object reaches apa_tidy.lavaan() from
   # a blavaan fit, which would then be reported with a Wald CI and a p.
-  fit <- test_blavaan_fit()
-  expect_error(apa_tidy(fit), "blavaan")
-  expect_error(apa_tidy_sem_fit(fit), "blavaan")
+  # Since the blavaan route landed, `apa_tidy(fit)` dispatches to that
+  # method and succeeds, so the guard is reached only by naming the
+  # lavaan method — which is still a thing a user can do.
+  fit <- test_blavaan_fit("one")
+  expect_error(apa_tidy.lavaan(fit), "blavaan")
+  expect_error(apa_tidy_sem_fit.lavaan(fit), "blavaan")
+  expect_identical(attr(apa_tidy(fit), "source_class"), "blavaan")
 })
 
 test_that("a non-converged fit is refused before easystats or fitMeasures", {

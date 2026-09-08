@@ -1,5 +1,49 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` and `apa_tidy_sem_fit()` gain a `blavaan` method,
+  the Bayesian mirror of the lavaan route: a posterior median with a
+  credible interval, pd and convergence diagnostics where lavaan has a
+  maximum-likelihood estimate with a Wald interval and a p value, and
+  `p` is `NA` throughout. The two fit-index rows are complementary —
+  lavaan fills χ², CFI, TLI, RMSEA and SRMR, blavaan fills the posterior
+  predictive p value, BRMSEA and BGammaHat, and each leaves the other's
+  columns `NA`, because a blavaan fit carries none of them.
+  `apa_tidy_sem_fit()` therefore drops `test` and `rmsea_level` on this
+  method rather than accepting and ignoring them, and gains `pd`,
+  `rescale` and `fit_ci_level` for `blavaan::blavFitIndices()`. The
+  interval on that row is the highest-density one, because that is what
+  reproduces the numbers `blavaan` itself publishes. A `blavaan` fit now
+  dispatches to its own method; the lavaan guard stays for the method
+  called by name.
+* feat: `standardize` on a `blavaan` fit reads
+  `blavaan::standardizedPosterior()`, not easystats — measured,
+  `parameters::model_parameters(x, standardize = )` aborts for *every*
+  value of the argument, `FALSE` included. The standardized solution
+  covers the whole parameter table, so its rows are a **superset** of
+  the unstandardized ones: the fixed marker loadings appear with a real
+  interval, and under `"std.all"` the latent variances are exactly 1.
+  Those rows carry full R-hat and ESS, because row *i* of that matrix
+  was measured to be the standardization of draw *i* of the chains. They
+  carry no component information, so `component` is `NA` there and
+  cannot be combined with `standardize`; select rows with `variables`.
+* feat: R-hat and both ESS columns of a `blavaan` fit come from
+  `posterior::summarise_draws()` over the fit's own chains, and
+  blavaan's are never computed. They **differ from what
+  `blavaan::summary()` prints**, which reports `blavInspect(x, "rhat")`
+  and `"neff"` — one ESS where the contract has two, from an estimator
+  that is neither the bulk nor the tail ESS the "greater than 400" rule
+  of thumb is defined for. The help page says so.
+* feat: a multi-group `blavaan` fit is refused with a message naming the
+  cause. `model_parameters()` aborts on one, and every fallback names
+  the parameters differently, so reporting any of them would silently
+  change what `term` means between fits.
+* refactor: `apply_label_overrides()` shares the "`labels =` wins on the
+  terms it names" step across all three label helpers, and
+  `check_sem_component()` takes its vocabulary as an argument, since
+  blavaan's component names (`latent`, `residual`) are not lavaan's six.
+  `apa_tidy.lavaan()` and `apa_tidy_sem_fit.lavaan()` split their row
+  assembly and their guards into helpers, bringing both back under the
+  50-line guideline.
 * feat: `apa_tidy()` gains a `lavaan` method, the extract layer's first
   frequentist route, and `apa_tidy_sem_fit()` arrives with it as a
   generic for the fit-index row (χ² with its df and p, CFI, TLI, RMSEA
