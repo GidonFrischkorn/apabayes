@@ -1,5 +1,42 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` gains a `brmshypothesis` method, for the output of
+  `brms::hypothesis()`. It is the first route that calls no easystats
+  function: easystats has no method for the class, so the numbers are
+  brms's own `$hypothesis` table. No brms function is called either —
+  the route reads list elements — though brms must be installed, because
+  the table names the version that produced the numbers.
+  `bf10` follows the reporting decision already recorded: the
+  Savage–Dickey ratio of a point hypothesis is inverted to be a Bayes
+  factor against equality, and the posterior odds of a directional one
+  are kept as they are.
+* feat: the `"hypotheses"` contract gains a `group` column.
+  `brms::hypothesis(scope = "coef")` returns one row per hypothesis and
+  group level, and without the column six rows of a three-level factor
+  cannot be told apart.
+* feat: `apa_tidy()` on a `brmshypothesis` reports the interval level
+  **per row**. `brms::hypothesis()` takes the quantiles at `alpha/2` and
+  `1 - alpha/2` for a point hypothesis but at `alpha` and `1 - alpha`
+  for a directional one, so one object holds intervals of two masses —
+  95% and 90% at the default `alpha`. The `ci_level` attribute states a
+  level only when every row agrees; the column always says what each row
+  is. An `alpha` of 0.5 or more, which `brms::hypothesis()` accepts and
+  which turns a directional interval inside out, is refused by name.
+* feat: neither the kind of a hypothesis nor what `Estimate` holds is
+  stored by brms, and both are read off the object's own draws rather
+  than assumed. A *named* hypothesis loses its operator (the
+  `Hypothesis` string becomes the name, and a name may itself contain
+  `<`), so `directional` is derived from which quantile pair the
+  interval used; `directional =` overrides it, and a row that cannot be
+  read is an error rather than a silent missing Bayes factor. Likewise
+  `robust = TRUE` leaves no marker, so `centrality` is decided by
+  comparing the estimate with the mean and the median of its draws.
+* feat: the `ci_method` column and attribute accept `"spi"` and
+  `"bci"`. The column is descriptive — it says what an interval is, and
+  the result-object route reports tables apabayes did not compute, where
+  the user chose the method. No route *offers* them: every `ci`
+  argument is still `"eti"` or `"hdi"`, exactly as `"wald"` and
+  `"boot"` are describable without being offered.
 * feat: `apa_tidy()` and `apa_tidy_sem_fit()` gain a `blavaan` method,
   the Bayesian mirror of the lavaan route: a posterior median with a
   credible interval, pd and convergence diagnostics where lavaan has a
@@ -9,10 +46,12 @@
   predictive p value, BRMSEA and BGammaHat, and each leaves the other's
   columns `NA`, because a blavaan fit carries none of them.
   `apa_tidy_sem_fit()` therefore drops `test` and `rmsea_level` on this
-  method rather than accepting and ignoring them, and gains `pd`,
-  `rescale` and `fit_ci_level` for `blavaan::blavFitIndices()`. The
-  interval on that row is the highest-density one, because that is what
-  reproduces the numbers `blavaan` itself publishes. A `blavaan` fit now
+  method rather than accepting and ignoring them, and gains `pD`,
+  `rescale` and `fit_ci_level` for `blavaan::blavFitIndices()`. `pD` is
+  spelled as blavaan spells it, so that it is not read as the contract's
+  `pd`, the probability of direction. The interval on that row is the
+  highest-density one, because that is what reproduces the numbers
+  `blavaan` itself publishes. A `blavaan` fit now
   dispatches to its own method; the lavaan guard stays for the method
   called by name.
 * feat: `standardize` on a `blavaan` fit reads

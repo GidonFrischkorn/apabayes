@@ -9,7 +9,7 @@
 \method{apa_tidy_sem_fit}{blavaan}(
   x,
   model = NA_character_,
-  pd = c("loo", "waic", "dic"),
+  pD = c("loo", "waic", "dic"),
   rescale = c("devM", "ppmc", "mcmc"),
   fit_ci_level = 0.9,
   ...
@@ -31,10 +31,12 @@ apa_tidy_sem_fit(x, ...)
 \item{model}{A single string naming the model in the \code{model} column,
 or \code{NA} (the default).}
 
-\item{pd}{Which effective-number-of-parameters estimator
+\item{pD}{Which effective-number-of-parameters estimator
 \code{\link[blavaan:blavFitIndices]{blavaan::blavFitIndices()}} rescales the posterior chi-square with:
-\code{"loo"} (its own default), \code{"waic"} or \code{"dic"}. Recorded in the \code{pD}
-attribute.}
+\code{"loo"} (its own default), \code{"waic"} or \code{"dic"}. Spelled as blavaan
+spells it, rather than lower-cased, so that it is not read as the
+\code{pd} of the parameters contract, which is the probability of
+direction. Recorded in the \code{pD} attribute.}
 
 \item{rescale}{How the posterior chi-square is rescaled: \code{"devM"} (the
 default), \code{"ppmc"} or \code{"mcmc"}. Recorded in the \code{rescale} attribute.}

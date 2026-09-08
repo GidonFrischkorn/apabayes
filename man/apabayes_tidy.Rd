@@ -38,8 +38,11 @@ is_apabayes_tidy(x)
 when the estimate is not a posterior summary (a lavaan
 maximum-likelihood estimate).}
 
-\item{ci_method}{\code{"eti"}, \code{"hdi"}, \code{"hpd"}, \code{"wald"}, \code{"boot"} or
-\code{NA}; seeds the \code{ci_method} column when the caller supplies none.}
+\item{ci_method}{\code{"eti"}, \code{"hdi"}, \code{"hpd"}, \code{"spi"}, \code{"bci"},
+\code{"wald"}, \code{"boot"} or \code{NA}; seeds the \code{ci_method} column when the
+caller supplies none. The column describes intervals apabayes did
+not necessarily compute, so it knows more methods than any route
+offers through its own \code{ci} argument.}
 
 \item{ci_level}{A number in (0, 1] or \code{NA}; seeds the \code{ci_level}
 column the same way.}
@@ -81,9 +84,11 @@ without testing whether it exists.
 \item{\code{estimate}}{double; the posterior median or mean, per the
 \code{centrality} attribute.}
 \item{\code{ci_low}, \code{ci_high}}{double; interval bounds.}
-\item{\code{ci_method}}{character; \code{"eti"}, \code{"hdi"} or \code{"hpd"} for a
-credible interval, \code{"wald"} or \code{"boot"} (percentile bootstrap) for
-a frequentist confidence interval (lavaan).}
+\item{\code{ci_method}}{character; \code{"eti"}, \code{"hdi"}, \code{"hpd"}, \code{"spi"}
+(shortest probability interval) or \code{"bci"} (bias-corrected and
+accelerated) for a credible interval, \code{"wald"} or \code{"boot"}
+(percentile bootstrap) for a frequentist confidence interval
+(lavaan).}
 \item{\code{ci_level}}{double; the interval mass, e.g. \code{0.95}.}
 \item{\code{pd}}{double; probability of direction.}
 \item{\code{rope_pct}}{double; percentage of the posterior inside the

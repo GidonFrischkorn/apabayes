@@ -176,9 +176,26 @@ test_that("wald and boot are confidence intervals the contract knows", {
     utils::capture.output(print(boot))[2], "95% CI (percentile bootstrap)",
     fixed = TRUE
   )
-  # The open question for Gidon (ARCHITECTURE.md): not added.
-  expect_error(apabayes_tidy(minimal(), ci_method = "spi"), "ci_method")
-  expect_error(apabayes_tidy(minimal(), ci_method = "bci"), "ci_method")
+})
+
+test_that("spi and bci are describable, though no route offers them", {
+  spi <- apabayes_tidy(minimal(), ci_method = "spi")
+  bci <- apabayes_tidy(minimal(), ci_method = "bci")
+
+  expect_identical(spi$ci_method, c("spi", "spi"))
+  expect_identical(attr(bci, "ci_method"), "bci")
+  expect_match(
+    utils::capture.output(print(spi))[2], "95% SPI (shortest probability)",
+    fixed = TRUE
+  )
+  expect_match(
+    utils::capture.output(print(bci))[2],
+    "95% BCI (bias-corrected accelerated)",
+    fixed = TRUE
+  )
+  # Still refused: the column describes intervals, it does not accept
+  # any word at all.
+  expect_error(apabayes_tidy(minimal(), ci_method = "nope"), "ci_method")
 })
 
 test_that("the validator is the entry point for a classed object", {

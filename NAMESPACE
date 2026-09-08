@@ -2,6 +2,7 @@
 
 S3method(apa_tidy,blavaan)
 S3method(apa_tidy,brmsfit)
+S3method(apa_tidy,brmshypothesis)
 S3method(apa_tidy,default)
 S3method(apa_tidy,describe_posterior)
 S3method(apa_tidy,draws)

@@ -27,10 +27,10 @@ tidy_contracts <- function() {
     hypotheses = list(
       required = c("hypothesis", "estimate"),
       columns = c(
-        hypothesis = "chr", estimate = "dbl", ci_low = "dbl",
-        ci_high = "dbl", ci_method = "chr", ci_level = "dbl",
-        evid_ratio = "dbl", post_prob = "dbl", bf10 = "dbl",
-        directional = "lgl"
+        hypothesis = "chr", group = "chr", estimate = "dbl",
+        ci_low = "dbl", ci_high = "dbl", ci_method = "chr",
+        ci_level = "dbl", evid_ratio = "dbl", post_prob = "dbl",
+        bf10 = "dbl", directional = "lgl"
       )
     ),
     loo = list(
@@ -118,19 +118,28 @@ check_ci_method <- function(x, allow_na = TRUE, call = rlang::caller_env()) {
   }
   if (!(is.character(x) && length(x) == 1 && x %in% ci_methods())) {
     cli::cli_abort(
-      '{.arg ci_method} must be one of "eti", "hdi", "hpd", "wald" or
-       "boot", not {.val {x}}.',
+      '{.arg ci_method} must be one of "eti", "hdi", "hpd", "spi",
+       "bci", "wald" or "boot", not {.val {x}}.',
       call = call
     )
   }
   invisible(x)
 }
 
-# The interval types the contract knows: three credible intervals and,
+# The interval types the contract knows: five credible intervals and,
 # since the lavaan route, two confidence intervals (Wald on standard or
-# robust SEs; percentile bootstrap). `spi` and `bci` are deliberately
-# absent (ARCHITECTURE.md § Open items).
-ci_methods <- function() c("eti", "hdi", "hpd", "wald", "boot")
+# robust SEs; percentile bootstrap).
+#
+# `spi` and `bci` are here because this column is *descriptive*: its job
+# is to say truthfully what an interval is, and the result-object route
+# accepts a table apabayes did not compute, so the user chooses the
+# method. `describe_posterior()` computes both (measured), and refusing
+# to describe one would make a user recompute their analysis to report
+# it. No route *offers* them: every `ci` argument is still "eti" or
+# "hdi", exactly as `wald` and `boot` are describable but not offered.
+ci_methods <- function() {
+  c("eti", "hdi", "hpd", "spi", "bci", "wald", "boot")
+}
 
 # `centrality` is "median" or "mean" for a posterior summary and NA for a
 # point estimate that is not one (the lavaan route). NA is a value here,
@@ -194,9 +203,11 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #'   \item{`estimate`}{double; the posterior median or mean, per the
 #'     `centrality` attribute.}
 #'   \item{`ci_low`, `ci_high`}{double; interval bounds.}
-#'   \item{`ci_method`}{character; `"eti"`, `"hdi"` or `"hpd"` for a
-#'     credible interval, `"wald"` or `"boot"` (percentile bootstrap) for
-#'     a frequentist confidence interval (lavaan).}
+#'   \item{`ci_method`}{character; `"eti"`, `"hdi"`, `"hpd"`, `"spi"`
+#'     (shortest probability interval) or `"bci"` (bias-corrected and
+#'     accelerated) for a credible interval, `"wald"` or `"boot"`
+#'     (percentile bootstrap) for a frequentist confidence interval
+#'     (lavaan).}
 #'   \item{`ci_level`}{double; the interval mass, e.g. `0.95`.}
 #'   \item{`pd`}{double; probability of direction.}
 #'   \item{`rope_pct`}{double; percentage of the posterior inside the
@@ -238,8 +249,11 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' @param centrality `"median"` or `"mean"`; what `estimate` holds. `NA`
 #'   when the estimate is not a posterior summary (a lavaan
 #'   maximum-likelihood estimate).
-#' @param ci_method `"eti"`, `"hdi"`, `"hpd"`, `"wald"`, `"boot"` or
-#'   `NA`; seeds the `ci_method` column when the caller supplies none.
+#' @param ci_method `"eti"`, `"hdi"`, `"hpd"`, `"spi"`, `"bci"`,
+#'   `"wald"`, `"boot"` or `NA`; seeds the `ci_method` column when the
+#'   caller supplies none. The column describes intervals apabayes did
+#'   not necessarily compute, so it knows more methods than any route
+#'   offers through its own `ci` argument.
 #' @param ci_level A number in (0, 1] or `NA`; seeds the `ci_level`
 #'   column the same way.
 #' @param source_class Character; `class()` of the object the numbers
@@ -468,6 +482,8 @@ tidy_header_meta <- function(x) {
         eti = "CrI (equal-tailed)",
         hdi = "HDI",
         hpd = "HPD interval",
+        spi = "SPI (shortest probability)",
+        bci = "BCI (bias-corrected accelerated)",
         wald = "CI (Wald)",
         boot = "CI (percentile bootstrap)"
       )

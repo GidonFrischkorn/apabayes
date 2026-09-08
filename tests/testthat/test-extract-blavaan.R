@@ -550,9 +550,9 @@ test_that("fit_ci_level widens the interval and reaches the attribute", {
   expect_identical(attr(wide, "ci_level"), 0.95)
 })
 
-test_that("pd and rescale reach blavFitIndices()", {
+test_that("pD and rescale reach blavFitIndices()", {
   two <- test_blavaan_fit("two")
-  out <- suppressWarnings(apa_tidy_sem_fit(two, pd = "dic"))
+  out <- suppressWarnings(apa_tidy_sem_fit(two, pD = "dic"))
   plain <- suppressWarnings(apa_tidy_sem_fit(two))
   expected <- suppressWarnings(
     blavaan::blavFitIndices(two, pD = "dic", rescale = "devM")
@@ -583,7 +583,7 @@ test_that("every lavaan fit index is NA on a blavaan fit", {
 
 test_that("the fit-index arguments are validated", {
   two <- test_blavaan_fit("two")
-  expect_error(apa_tidy_sem_fit(two, pd = "nope"), "pd")
+  expect_error(apa_tidy_sem_fit(two, pD = "nope"), "pD")
   expect_error(apa_tidy_sem_fit(two, rescale = "nope"), "rescale")
   expect_error(apa_tidy_sem_fit(two, fit_ci_level = 1), "fit_ci_level")
   expect_error(apa_tidy_sem_fit(two, model = 1), "model")

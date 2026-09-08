@@ -45,6 +45,16 @@
 #'   data = lavaan::HolzingerSwineford1939
 #' )
 #' apa_tidy(fit, component = "loading", standardize = TRUE)
+#' @examplesIf rlang::is_installed("brms")
+#'
+#' # `brms::hypothesis()` reads a plain data frame of draws as well as a
+#' # fitted model, so the hypothesis route needs no Stan here. The first
+#' # row is directional (a 90% interval, `bf10` the posterior odds), the
+#' # second a point hypothesis whose evidence ratio needs prior draws
+#' # this data frame does not carry.
+#' q <- stats::qnorm(stats::ppoints(400))
+#' draws <- data.frame(b_wt = -5 + q, b_am = 0.2 + 2 * q)
+#' apa_tidy(brms::hypothesis(draws, c("b_wt < 0", "b_am = 0")))
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")

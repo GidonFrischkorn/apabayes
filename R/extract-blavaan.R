@@ -248,10 +248,12 @@ check_blavaan_single_group <- function(x, call = rlang::caller_env()) {
 #'   BNFI need a baseline model and are not reported yet. A fit made with
 #'   `test = "none"` has neither a PPP nor fit indices and is refused.
 #'
-#' @param pd Which effective-number-of-parameters estimator
+#' @param pD Which effective-number-of-parameters estimator
 #'   [blavaan::blavFitIndices()] rescales the posterior chi-square with:
-#'   `"loo"` (its own default), `"waic"` or `"dic"`. Recorded in the `pD`
-#'   attribute.
+#'   `"loo"` (its own default), `"waic"` or `"dic"`. Spelled as blavaan
+#'   spells it, rather than lower-cased, so that it is not read as the
+#'   `pd` of the parameters contract, which is the probability of
+#'   direction. Recorded in the `pD` attribute.
 #' @param rescale How the posterior chi-square is rescaled: `"devM"` (the
 #'   default), `"ppmc"` or `"mcmc"`. Recorded in the `rescale` attribute.
 #' @param fit_ci_level Mass of the fit indices' credible interval,
@@ -260,14 +262,21 @@ check_blavaan_single_group <- function(x, call = rlang::caller_env()) {
 #' @export
 apa_tidy_sem_fit.blavaan <- function(x,
                                      model = NA_character_,
-                                     pd = c("loo", "waic", "dic"),
+                                     # `pD` is blavaan's own spelling of
+                                     # the argument (`blavFitIndices(pD
+                                     # = )`), kept so that it is not
+                                     # read as the contract's `pd`, the
+                                     # probability of direction.
+                                     # nolint next: object_name_linter.
+                                     pD = c("loo", "waic", "dic"),
                                      rescale = c("devM", "ppmc", "mcmc"),
                                      fit_ci_level = 0.90,
                                      ...) {
   rlang::check_installed("blavaan", reason = "to read blavaan objects.")
   rlang::check_installed("lavaan", reason = "to read blavaan objects.")
   model <- check_sem_model(model)
-  pd <- rlang::arg_match(pd)
+  # nolint next: object_name_linter. blavaan's spelling; see the formals.
+  pD <- rlang::arg_match(pD)
   rescale <- rlang::arg_match(rescale)
   check_ci_level(
     fit_ci_level,
@@ -283,7 +292,7 @@ apa_tidy_sem_fit.blavaan <- function(x,
     )
   }
 
-  indices <- blavaan_fit_indices(x, pd, rescale, fit_ci_level)
+  indices <- blavaan_fit_indices(x, pD, rescale, fit_ci_level)
   out <- data.frame(
     model = model,
     ppp = unname(lavaan::fitMeasures(x, "ppp")),
@@ -300,7 +309,7 @@ apa_tidy_sem_fit.blavaan <- function(x,
     package_versions = package_versions_of(c("blavaan", "apabayes")),
     estimator = options$estimator,
     n = lavaan::lavInspect(x, "ntotal"),
-    pD = pd,
+    pD = pD,
     rescale = rescale
   )
 }
@@ -311,8 +320,9 @@ apa_tidy_sem_fit.blavaan <- function(x,
 # 1e-6, while the equal-tailed interval differs), so this is the one
 # summary that reproduces the numbers blavaan itself publishes.
 # `adjBGammaHat` and `BMc` are computed too but have no contract column.
-blavaan_fit_indices <- function(x, pd, rescale, fit_ci_level) {
-  fi <- blavaan::blavFitIndices(x, pD = pd, rescale = rescale)
+# nolint next: object_name_linter. blavaan's spelling; see the formals.
+blavaan_fit_indices <- function(x, pD, rescale, fit_ci_level) {
+  fi <- blavaan::blavFitIndices(x, pD = pD, rescale = rescale)
   summarised <- summary(
     fi,
     central.tendency = "median", prob = fit_ci_level
