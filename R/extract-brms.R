@@ -92,7 +92,7 @@ brms_diagnostics <- function(x, terms) {
 #' `apa_tidy_diagnostics()` returns R-hat and bulk and tail ESS for every
 #' variable of a fitted model's posterior, including the group-level
 #' deviations that a parameter table does not print. It is the table
-#' `apa_convergence()` reports from: a convergence statement has to cover
+#' [apa_convergence()] reports from: a convergence statement has to cover
 #' what was sampled, not what a table shows.
 #'
 #' Numbers come from [posterior::summarise_draws()]; apabayes computes no
@@ -108,7 +108,13 @@ brms_diagnostics <- function(x, terms) {
 #'   reported when named here.
 #'
 #' @return An [apabayes_tidy] tibble of type `"diagnostics"` with columns
-#'   `term`, `rhat`, `ess_bulk` and `ess_tail`.
+#'   `term`, `rhat`, `ess_bulk` and `ess_tail`. Its `divergences`
+#'   attribute is the number of divergent post-warmup transitions summed
+#'   over chains, read from the sampler's own record, for a `brmsfit`,
+#'   `stanreg`, `stanfit`, `CmdStanMCMC` or `blavaan` fit sampled with
+#'   NUTS; it is `NA` for draws, `mcmc.list` and runjags objects and for
+#'   fits made by optimisation, variational inference or another sampler,
+#'   which have no such record.
 #' @seealso [apa_tidy()] for parameter tables.
 #' @examplesIf rlang::is_installed("posterior")
 #' z <- stats::qnorm(stats::ppoints(400))
@@ -124,8 +130,8 @@ apa_tidy_diagnostics <- function(x, ...) {
 
 #' @describeIn apa_tidy_diagnostics Anything
 #'   [posterior::as_draws_df()] accepts, which includes `brmsfit`,
-#'   `stanfit`, `CmdStanFit`, `mcmc` and `mcmc.list`. One coercing method
-#'   serves every supported object, as on the draws route.
+#'   `stanreg`, `stanfit`, `CmdStanFit`, `mcmc` and `mcmc.list`. One
+#'   coercing method serves every supported object, as on the draws route.
 #' @export
 apa_tidy_diagnostics.default <- function(x, variables = NULL, ...) {
   rlang::check_installed(
@@ -142,6 +148,21 @@ apa_tidy_diagnostics.default <- function(x, variables = NULL, ...) {
       )
     }
   )
+  diagnostics_table(
+    draws, variables,
+    source_class = class(x),
+    packages = c("posterior", "apabayes"),
+    divergences = sampler_divergences(x)
+  )
+}
+
+# The diagnostics table of a set of draws, shared by the coercing method
+# and the blavaan method. A diagnostics table carries no estimate and no
+# interval, so the centrality and interval attributes are NA rather than
+# the constructor's defaults: the print header must not claim a median or
+# a 95% CrI that is not there.
+diagnostics_table <- function(draws, variables, source_class, packages,
+                              divergences) {
   terms <- resolve_draws_variables(variables, posterior::variables(draws))
   summarised <- as.data.frame(posterior::summarise_draws(
     posterior::subset_draws(draws, variable = terms),
@@ -156,17 +177,82 @@ apa_tidy_diagnostics.default <- function(x, variables = NULL, ...) {
     ess_tail = summarised$ess_tail[row],
     stringsAsFactors = FALSE
   )
-  # A diagnostics table carries no estimate and no interval, so the
-  # interval attributes are NA rather than the constructor's defaults:
-  # the print header must not claim a 95% CrI that is not there.
   apabayes_tidy(
     out,
     type = "diagnostics",
+    centrality = NA_character_,
     ci_method = NA_character_,
     ci_level = NA_real_,
-    source_class = class(x),
-    package_versions = package_versions_of(c("posterior", "apabayes"))
+    source_class = as.character(source_class),
+    package_versions = package_versions_of(packages),
+    divergences = divergences
   )
+}
+
+# ---- divergent transitions ---------------------------------------------
+
+# The number of divergent post-warmup transitions, summed over chains, or
+# NA when `x` carries no NUTS sampler record. Measured
+# (local/probes/probe_convergence*.R): a brmsfit keeps a stanfit in
+# `$fit` under both backends, a stanreg in `$stanfit`, and a blavaan fit
+# its sampler object under `blavInspect(x, "mcobj")` — a stanfit on the
+# default target but a CmdStanMCMC on `target = "cmdstan"`. Draws,
+# `mcmc.list`, runjags and JAGS objects have no divergences to count.
+sampler_divergences <- function(x) {
+  if (inherits(x, "brmsfit")) {
+    return(sampler_divergences(x$fit))
+  }
+  if (inherits(x, "stanreg")) {
+    return(sampler_divergences(x$stanfit))
+  }
+  if (inherits(x, "blavaan")) {
+    return(sampler_divergences(blavaan::blavInspect(x, "mcobj")))
+  }
+  if (inherits(x, "stanfit")) {
+    return(stanfit_divergences(x))
+  }
+  if (inherits(x, "CmdStanMCMC")) {
+    return(cmdstan_divergences(x))
+  }
+  NA_integer_
+}
+
+# Measured: a stanfit holds NUTS draws exactly when `@mode` is 0 (2 after
+# optimizing, `chains = 0` or a failed run), its method is "sampling"
+# (meanfield says "variational", where `get_sampler_params()` aborts),
+# and every chain records `divergent__` (Fixed_param and static HMC do
+# not). Anything else has no count, which is not a count of zero.
+stanfit_divergences <- function(x) {
+  sampled <- isTRUE(x@mode == 0) &&
+    identical(x@stan_args[[1]]$method, "sampling")
+  if (!sampled) {
+    return(NA_integer_)
+  }
+  rlang::check_installed("rstan", reason = "to count divergent transitions.")
+  params <- rstan::get_sampler_params(x, inc_warmup = FALSE)
+  has_column <- vapply(
+    params, function(m) "divergent__" %in% colnames(m), logical(1)
+  )
+  if (!all(has_column)) {
+    return(NA_integer_)
+  }
+  as.integer(sum(vapply(
+    params, function(m) sum(m[, "divergent__"]), numeric(1)
+  )))
+}
+
+# A CmdStanMCMC is an R6 object, so its own methods are called and no
+# cmdstanr function is (cmdstanr is not on CRAN). Only HMC records
+# `divergent__`; the fixed-parameter sampler does not.
+cmdstan_divergences <- function(x) {
+  if (!identical(x$metadata()$algorithm, "hmc")) {
+    return(NA_integer_)
+  }
+  diagnostics <- x$sampler_diagnostics(inc_warmup = FALSE, format = "draws_df")
+  if (!"divergent__" %in% posterior::variables(diagnostics)) {
+    return(NA_integer_)
+  }
+  as.integer(sum(diagnostics$divergent__))
 }
 
 #' @describeIn apa_tidy_diagnostics A `runjags` object keeps its chains in

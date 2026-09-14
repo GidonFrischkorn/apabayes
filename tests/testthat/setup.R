@@ -159,8 +159,12 @@ test_lavaan_fit <- function(name = "cfa") {
 #             `model_parameters()` aborts on one (measured).
 #   "notest"  `test = "none"` (0.5 s), which has no ppp and no fit
 #             indices but a working parameter table.
-test_blavaan_fit <- function(name = c("one", "two", "groups", "notest")) {
-  name <- match.arg(name)
+#   "divergent" the two-factor model with 30 warmup iterations and
+#             `adapt_delta = 0.05` (0.9 s), which diverges on every
+#             transition (400 of 400, measured), for the divergence count.
+test_blavaan_fit <- function(name = "one") {
+  fits <- c("one", "two", "groups", "notest", "divergent")
+  name <- match.arg(name, fits)
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("blavaan")
   key <- paste0("blavaan_", name)
@@ -173,13 +177,18 @@ test_blavaan_fit <- function(name = c("one", "two", "groups", "notest")) {
     textual =~ x4 + x5 + x6
   "
   args <- list(
-    if (name == "two") two else one,
+    if (name %in% c("two", "divergent")) two else one,
     data = lavaan::HolzingerSwineford1939,
     n.chains = 2, burnin = 200, sample = 200, seed = 1,
     bcontrol = list(refresh = 0)
   )
   if (name == "groups") args$group <- "school"
   if (name == "notest") args$test <- "none"
+  if (name == "divergent") {
+    args$burnin <- 30
+    args$seed <- 3
+    args$bcontrol <- list(refresh = 0, control = list(adapt_delta = 0.05))
+  }
   fit <- NULL
   # `do.call("bcfa", ...)` by name, not `do.call(blavaan::bcfa, ...)`:
   # bcfa() reads `as.character(match.call()[[1]])` to build the

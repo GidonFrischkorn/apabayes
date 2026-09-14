@@ -36,6 +36,7 @@ Suggests:
     lavaan,
     papaja,
     posterior,
+    rstan,
     rstanarm,
     runjags,
     testthat (>= 3.0.0),

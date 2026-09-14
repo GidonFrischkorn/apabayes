@@ -606,3 +606,80 @@ test_that("test = 'none' is refused by the fit-index method only", {
   expect_identical(nrow(out), 6L)
   expect_identical(out$term, coef_names(notest))
 })
+
+test_that("centrality = 'mean' reads blavaan's EAP column", {
+  # Measured: summary(blavFitIndices(), central.tendency = "mean") names
+  # its centre column EAP, and it equals the draw means; the HPD bounds
+  # do not change with it. miniQ's bsem_fit_indices() reads that column.
+  two <- test_blavaan_fit("two")
+  fi <- suppressWarnings(blavaan::blavFitIndices(two))
+  s <- summary(fi, central.tendency = "mean", prob = 0.90)
+  mean_row <- suppressWarnings(apa_tidy_sem_fit(two, centrality = "mean"))
+  median_row <- suppressWarnings(apa_tidy_sem_fit(two))
+
+  expect_equal(mean_row$brmsea, s["BRMSEA", "EAP"])
+  expect_equal(mean_row$bgammahat, s["BGammaHat", "EAP"])
+  expect_equal(mean_row$brmsea, mean(fi@indices$BRMSEA))
+  expect_equal(mean_row$brmsea_low, median_row$brmsea_low)
+  expect_equal(mean_row$bgammahat_high, median_row$bgammahat_high)
+  expect_identical(attr(mean_row, "centrality"), "mean")
+  expect_error(apa_tidy_sem_fit(two, centrality = "mode"), "centrality")
+})
+
+# ---- the diagnostics table ---------------------------------------------
+
+test_that("apa_tidy_diagnostics() reads a blavaan fit's own chains", {
+  # Measured: posterior::as_draws_df() has no method for a blavaan
+  # object; blavInspect(x, "mcmc") carries the chains under coef() names.
+  fit <- test_blavaan_fit("two")
+  out <- apa_tidy_diagnostics(fit)
+  sd <- sd_of(dr_of(fit))
+
+  expect_true(is_apabayes_tidy(out))
+  expect_identical(attr(out, "type"), "diagnostics")
+  expect_identical(out$term, coef_names(fit))
+  row <- match(out$term, sd$variable)
+  expect_equal(out$rhat, sd$rhat[row])
+  expect_equal(out$ess_bulk, sd$ess_bulk[row])
+  expect_equal(out$ess_tail, sd$ess_tail[row])
+  expect_identical(attr(out, "source_class"), "blavaan")
+  expect_identical(attr(out, "centrality"), NA_character_)
+  expect_identical(attr(out, "ci_method"), NA_character_)
+  expect_named(
+    attr(out, "package_versions"),
+    c("blavaan", "posterior", "apabayes")
+  )
+  expect_identical(
+    attr(out, "divergences"),
+    sampler_divergences(fit)
+  )
+  expect_true(withVisible(apa_tidy_diagnostics(fit))$visible)
+})
+
+test_that("apa_tidy_diagnostics() on blavaan selects with variables =", {
+  fit <- test_blavaan_fit("two")
+  out <- apa_tidy_diagnostics(fit, variables = c("visual~~textual", "x1~~x1"))
+  expect_identical(out$term, c("visual~~textual", "x1~~x1"))
+  expect_error(apa_tidy_diagnostics(fit, variables = "nope"), "nope")
+})
+
+test_that("apa_tidy_diagnostics() is not refused on a multi-group fit", {
+  # The parameters method refuses one because model_parameters() aborts;
+  # the diagnostics need no easystats call, and the group-suffixed names
+  # are unique (measured).
+  fit <- test_blavaan_fit("groups")
+  out <- apa_tidy_diagnostics(fit)
+  expect_true(any(endsWith(out$term, ".g2")))
+  expect_false(anyDuplicated(out$term) > 0)
+})
+
+test_that("apa_tidy_diagnostics() requires blavaan for a blavaan fit", {
+  fit <- test_blavaan_fit("two")
+  local_mocked_bindings(
+    check_installed = function(pkg, ...) {
+      if ("blavaan" %in% pkg) stop("blavaan is required")
+    },
+    .package = "rlang"
+  )
+  expect_error(apa_tidy_diagnostics(fit), "blavaan")
+})

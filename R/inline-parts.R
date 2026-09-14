@@ -8,7 +8,8 @@ inline_strings <- function(x, opts) {
   switch(opts$type,
     parameters = inline_parameters(x, opts),
     hypotheses = inline_hypotheses(x, opts),
-    diagnostics = inline_diagnostics(x, opts)
+    diagnostics = inline_diagnostics(x, opts),
+    sem_fit = inline_sem_fit(x, opts)
   )
 }
 
@@ -187,4 +188,124 @@ inline_diagnostics <- function(x, opts) {
     ),
     stringsAsFactors = FALSE
   )
+}
+
+# ---- sem_fit -------------------------------------------------------------
+
+# One sentence of fit indices per row, the parts in a fixed order and
+# each only when its value is present. The seeds fix the defaults: three
+# decimals without a leading zero for the bounded indices, two for the
+# chi-square (SDVWM `sem_fit_row()`); miniQ's `fmt_bfit()` is the same
+# row at `digits = 2, interval = FALSE`. Abbreviations are roman, as APA
+# sets CFI and RMSEA and as both seeds print them.
+inline_sem_fit <- function(x, opts) {
+  statistic <- vapply(seq_len(nrow(x)), function(i) {
+    parts <- sem_fit_parts(x, i, opts)
+    if (length(parts) == 0) NA_character_ else paste(parts, collapse = ", ")
+  }, character(1))
+  data.frame(
+    estimate = rep(NA_character_, nrow(x)),
+    statistic = statistic,
+    stringsAsFactors = FALSE
+  )
+}
+
+sem_fit_parts <- function(x, i, opts) {
+  m <- opts$markup
+  auto <- identical(opts$leading_zero, "auto")
+  fmt <- list(
+    markup = m,
+    index_digits = opts$digits %||% 3,
+    chisq_digits = opts$digits %||% 2,
+    index_zero = if (auto) FALSE else opts$leading_zero,
+    chisq_zero = if (auto) TRUE else opts$leading_zero
+  )
+  # The RMSEA interval is a confidence interval at the row's own level;
+  # the Bayesian ones are labelled and levelled by the table.
+  bayes_method <- attr(x, "ci_method", exact = TRUE)
+  bayes_level <- attr(x, "ci_level", exact = TRUE)
+  value <- function(col) x[[col]][i]
+  wanted <- function(stat, col = stat) {
+    stat %in% opts$stats && !is.na(value(col))
+  }
+  parts <- list(
+    if (wanted("chisq")) {
+      sem_chisq_part(value("chisq"), value("df"), value("p"), fmt, opts)
+    },
+    if (wanted("cfi")) sem_index_part("CFI", value("cfi"), fmt),
+    if (wanted("tli")) sem_index_part("TLI", value("tli"), fmt),
+    if (wanted("rmsea")) {
+      sem_index_part(
+        "RMSEA", value("rmsea"), fmt, value("rmsea_low"),
+        value("rmsea_high"), NA_character_, value("rmsea_level"), opts
+      )
+    },
+    if (wanted("srmr")) sem_index_part("SRMR", value("srmr"), fmt),
+    if (wanted("ppp")) sem_index_part("PPP", value("ppp"), fmt),
+    if (wanted("brmsea")) {
+      sem_index_part(
+        "BRMSEA", value("brmsea"), fmt, value("brmsea_low"),
+        value("brmsea_high"), bayes_method, bayes_level, opts
+      )
+    },
+    if (wanted("bgammahat")) {
+      sem_index_part(
+        symbol("bgammahat", m), value("bgammahat"), fmt,
+        value("bgammahat_low"), value("bgammahat_high"), bayes_method,
+        bayes_level, opts
+      )
+    }
+  )
+  unlist(parts)
+}
+
+# `χ²(24) = 85.31, *p* < .001`. A whole df prints as an integer; a
+# fractional one (a mean-and-variance-adjusted test) with the chi-square's
+# decimals.
+sem_chisq_part <- function(chisq, df, p, fmt, opts) {
+  m <- fmt$markup
+  df_string <- if (is.na(df)) {
+    ""
+  } else {
+    df_digits <- if (df == round(df)) 0 else fmt$chisq_digits
+    paste0("(", apa_num(df, df_digits, markup = m), ")")
+  }
+  out <- paste0(
+    symbol("chisq", m), df_string, " = ",
+    apa_num(chisq, fmt$chisq_digits, fmt$chisq_zero, markup = m)
+  )
+  if (!is.na(p)) {
+    out <- paste0(
+      out, ", ", apa_p(p, opts$digits_prob, markup = m, symbol = TRUE)
+    )
+  }
+  out
+}
+
+# `NAME = .931`, followed by `, 90% CI [.071, .114]` when bounds are
+# given and intervals are wanted. The label and the missing-level rule
+# are the parameters rows' (inline_estimate_row()).
+sem_index_part <- function(name, estimate, fmt, low = NA, high = NA,
+                           method = NA_character_, level = NA_real_,
+                           opts = NULL) {
+  m <- fmt$markup
+  out <- paste(
+    name, "=", apa_num(estimate, fmt$index_digits, fmt$index_zero, markup = m)
+  )
+  if (is.null(opts) || !opts$interval || is.na(low) || is.na(high)) {
+    return(out)
+  }
+  label <- opts$ci_label
+  if (identical(label, "auto")) {
+    label <- ci_label_of(method)
+  }
+  if (is.na(level)) {
+    label <- NULL
+    level <- 0.95
+  }
+  paste0(out, ", ", apa_ci(
+    low, high,
+    level = level, label = label, digits = fmt$index_digits,
+    leading_zero = fmt$index_zero, markup = m
+  ))
 }

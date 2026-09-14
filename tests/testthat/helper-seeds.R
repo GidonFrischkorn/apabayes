@@ -68,6 +68,36 @@ seed_sdvwm$fmt_r_full <- function(fit, lhs, rhs, op = "~~", ci = TRUE) {
   }
 }
 
+# One row of SEM fit indices from a lavaan fit (sem_helpers.R lines
+# 222-238, read 2026-09-14 for inline slice 2).
+seed_sdvwm$sem_fit_row <- function(label, fit) {
+  drop0 <- seed_sdvwm$drop0
+  fm <- lavaan::fitMeasures(
+    fit,
+    c(
+      "chisq", "df", "pvalue", "cfi", "rmsea",
+      "rmsea.ci.lower", "rmsea.ci.upper", "srmr"
+    )
+  )
+  data.frame(
+    group = label,
+    chisq_df = sprintf("%.2f(%d)", fm["chisq"], as.integer(fm["df"])),
+    p = ifelse(fm["pvalue"] < .001, "< .001",
+      drop0(formatC(fm["pvalue"], digits = 3, format = "f"))
+    ),
+    cfi = drop0(formatC(fm["cfi"], digits = 3, format = "f")),
+    rmsea = drop0(formatC(fm["rmsea"], digits = 3, format = "f")),
+    ci = sprintf(
+      "[%s, %s]",
+      drop0(formatC(fm["rmsea.ci.lower"], digits = 3, format = "f")),
+      drop0(formatC(fm["rmsea.ci.upper"], digits = 3, format = "f"))
+    ),
+    srmr = drop0(formatC(fm["srmr"], digits = 3, format = "f")),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
 seed_miniq <- list(
   fmt_r = function(x) {
     sub("^-0\\.", "-.", sub("^0\\.", ".", sprintf("%.2f", x)))

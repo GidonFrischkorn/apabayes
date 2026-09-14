@@ -373,10 +373,13 @@ test_that("a diagnostics row prints R-hat and both ESS", {
 # ---- types not yet built -------------------------------------------------
 
 test_that("a table kind the layer does not build yet is refused by name", {
-  fit <- test_lavaan_fit("cfa")
+  loo <- apabayes_tidy(
+    data.frame(model = c("a", "b"), elpd_diff = c(0, -1.2)),
+    type = "loo", centrality = NA_character_
+  )
   expect_error(
-    apa_inline(apa_tidy_sem_fit(fit)),
-    'does not yet report a table of type "sem_fit"'
+    apa_inline(loo),
+    'does not yet report a table of type "loo"'
   )
 })
 

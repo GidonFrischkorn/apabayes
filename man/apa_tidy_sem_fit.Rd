@@ -9,6 +9,7 @@
 \method{apa_tidy_sem_fit}{blavaan}(
   x,
   model = NA_character_,
+  centrality = c("median", "mean"),
   pD = c("loo", "waic", "dic"),
   rescale = c("devM", "ppmc", "mcmc"),
   fit_ci_level = 0.9,
@@ -30,6 +31,10 @@ apa_tidy_sem_fit(x, ...)
 
 \item{model}{A single string naming the model in the \code{model} column,
 or \code{NA} (the default).}
+
+\item{centrality}{The posterior summary of BRMSEA and BGammaHat:
+\code{"median"} (the default) or \code{"mean"}, blavaan's \code{EAP} column. The
+interval is the same highest-density interval either way.}
 
 \item{pD}{Which effective-number-of-parameters estimator
 \code{\link[blavaan:blavFitIndices]{blavaan::blavFitIndices()}} rescales the posterior chi-square with:

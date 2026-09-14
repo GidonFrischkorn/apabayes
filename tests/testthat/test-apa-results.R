@@ -81,6 +81,18 @@ test_that("the constructor checks its table and its strings", {
   expect_error(new_apa_results("a", "b", "c", t, "html"), "`markup`")
 })
 
+test_that("the strings may be one per row or one for the whole table", {
+  t <- fixture("tidy_brms_full")
+  r <- new_apa_results(NA_character_, "all", "all", t, "plain")
+  expect_identical(r$full_result, "all")
+  expect_identical(r$table, t)
+  three <- t[1:3, ]
+  expect_error(
+    new_apa_results(c("a", "b"), c("a", "b"), c("a", "b"), three, "md"),
+    "length 3 or 1"
+  )
+})
+
 test_that("extra named elements travel on the object", {
   t <- fixture("tidy_brms_full")[1, ]
   r <- new_apa_results("a", NA_character_, "a", t, "plain", passed = TRUE)

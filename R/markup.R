@@ -46,15 +46,20 @@ detect_markup_target <- function() {
 # as escapes so that R CMD check sees ASCII source. U+2212 is the minus
 # sign apa7::align_chr() emits in tables (measured 2026-09-06).
 symbol_table <- rbind(
-  minus        = c("\u2212", "\u2212", "\u2212", "-"),
-  times        = c("\u00d7", "$\\times$", "\u00d7", "x"),
-  infinity     = c("\u221e", "$\\infty$", "\u221e", "Inf"),
+  minus = c("\u2212", "\u2212", "\u2212", "-"),
+  times = c("\u00d7", "$\\times$", "\u00d7", "x"),
+  infinity = c("\u221e", "$\\infty$", "\u221e", "Inf"),
   neg_infinity = c("\u2212\u221e", "$-\\infty$", "\u2212\u221e", "-Inf"),
-  geq          = c("\u2265", "$\\geq$", "\u2265", ">="),
-  leq          = c("\u2264", "$\\leq$", "\u2264", "<="),
-  chisq        = c("\u03c7\u00b2", "$\\chi^2$", "\u03c7\u00b2", "chi2"),
-  rhat         = c("*R\u0302*", "$\\hat{R}$", "*R\u0302*", "Rhat"),
-  delta        = c("\u0394", "$\\Delta$", "\u0394", "Delta")
+  geq = c("\u2265", "$\\geq$", "\u2265", ">="),
+  leq = c("\u2264", "$\\leq$", "\u2264", "<="),
+  chisq = c("\u03c7\u00b2", "$\\chi^2$", "\u03c7\u00b2", "chi2"),
+  rhat = c("*R\u0302*", "$\\hat{R}$", "*R\u0302*", "Rhat"),
+  delta = c("\u0394", "$\\Delta$", "\u0394", "Delta"),
+  # Upright: a capital Greek letter, as LaTeX's \Gamma sets it and as the
+  # miniQ seed prints it (`B$\hat{\Gamma}$`).
+  bgammahat = c(
+    "B\u0393\u0302", "B$\\hat{\\Gamma}$", "B\u0393\u0302", "BGammaHat"
+  )
 )
 colnames(symbol_table) <- markup_targets
 

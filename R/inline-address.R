@@ -57,6 +57,7 @@ inline_id_columns <- function(type) {
   switch(type,
     parameters = c("term", "label"),
     hypotheses = "hypothesis",
+    sem_fit = "model",
     "term"
   )
 }

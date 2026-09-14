@@ -70,8 +70,8 @@ for none.}
 subset of what the row can print: \code{"pd"}, \code{"rope"}, \code{"bf"}, \code{"p"}
 for a parameters row (the default prints every one the row
 carries); \code{"bf"}, \code{"er"}, \code{"post_prob"} for a hypotheses row (the
-default prints the Bayes factor alone). \code{character()} prints the
-estimate alone.}
+default prints the Bayes factor alone); the index names above for a
+sem_fit row. \code{character()} prints the estimate alone.}
 
 \item{interval}{\code{FALSE} drops the interval.}
 
@@ -81,12 +81,14 @@ drops the label. A row whose \code{ci_level} is \code{NA} prints the brackets
 alone whatever \code{ci_label} says, because a label without its level
 would claim more than the table records.}
 
-\item{digits}{Decimals for estimates and interval bounds; \code{NULL} is 2.}
+\item{digits}{Decimals for estimates and interval bounds; \code{NULL} is 2,
+and on a sem_fit row 3 for the indices and 2 for χ².}
 
 \item{digits_prob}{Decimals for pd, p and the ROPE share.}
 
 \item{leading_zero}{\code{"auto"} drops the leading zero on standardized
-rows and keeps it elsewhere; \code{TRUE} or \code{FALSE} force one rule.}
+rows and on fit indices and keeps it elsewhere; \code{TRUE} or \code{FALSE}
+force one rule.}
 
 \item{bf, bf_direction}{Passed to \code{\link[=apa_bf]{apa_bf()}} as \code{style} and
 \code{direction}.}
@@ -131,7 +133,19 @@ standardized row (\code{std}) drops the leading zero. A \code{hypotheses} row
 prints the estimate, the interval at that row's level and the Bayes
 factor; \code{stats} can add the evidence ratio and the posterior
 probability. A \code{diagnostics} row prints R-hat and both effective
-sample sizes. Every number goes through the format layer
+sample sizes.
+
+A \code{sem_fit} row from \code{\link[=apa_tidy_sem_fit]{apa_tidy_sem_fit()}} prints the indices it
+carries, in a fixed order: for a lavaan fit \verb{χ²(df) = …, *p* …, CFI, TLI, RMSEA with its confidence interval, SRMR}; for a blavaan fit
+\verb{PPP, BRMSEA and BΓ̂} with their credible intervals, labelled by the
+table's \code{ci_method}. The indices print with three decimals and no
+leading zero and χ² with two, unless \code{digits} sets both; \code{stats}
+selects among \code{"chisq"} (with its \emph{p}), \code{"cfi"}, \code{"tli"},
+\code{"rmsea"}, \code{"srmr"}, \code{"ppp"}, \code{"brmsea"} and \code{"bgammahat"}. The
+default method extracts with \code{\link[=apa_tidy]{apa_tidy()}}, which is the parameter
+table, so fit indices are reported from \code{apa_tidy_sem_fit(fit)}.
+
+Every number goes through the format layer
 (\code{\link[=apa_num]{apa_num()}}, \code{\link[=apa_ci]{apa_ci()}}, \code{\link[=apa_pd]{apa_pd()}}, \code{\link[=apa_bf]{apa_bf()}}, \code{\link[=apa_p]{apa_p()}}), and
 nothing printed judges the result.
 }

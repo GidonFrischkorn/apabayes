@@ -1,5 +1,49 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_convergence()`, the convergence sentence (Milestone 3,
+  second slice). From a fit or a stored diagnostics table it states
+  R-hat, both effective sample sizes and the divergent transitions over
+  every sampled quantity: `*R̂* ≤ 1.004, bulk ESS ≥ 1,240, tail ESS ≥
+  980, no divergent transitions`. The extremes are stated as bounds and
+  rounded away from the data (the largest R-hat up, the smallest ESS
+  down), so that `≤` and `≥` hold for the unrounded numbers; the m3
+  manuscript's `sprintf("%.3f")` printed `≤ 1.003` for 1.0034. When a
+  value reaches a threshold (`rhat = 1.01`, `ess = 400`) the part says
+  how many and gives the extreme (`2 of 13 *R̂* ≥ 1.01, maximum 1.018`).
+  No word judges the fit; a `passed` flag and a `summary` data frame are
+  on the object for code.
+* feat: `apa_tidy_diagnostics()` records the number of divergent
+  post-warmup transitions in a `divergences` attribute, read from the
+  sampler's own record: `rstan::get_sampler_params()` on the stanfit
+  inside a `brmsfit` (both backends), `stanreg` or `blavaan` fit, and the
+  object's own `sampler_diagnostics()` on a `CmdStanMCMC`. It is `NA`,
+  not 0, for draws, `mcmc.list` and runjags objects and for fits made by
+  optimisation, variational inference or a sampler without that record.
+  `rstan` joins Suggests.
+* feat: `apa_tidy_diagnostics()` gains a `blavaan` method.
+  `posterior::as_draws_df()` cannot read a blavaan fit, so the chains
+  are `blavInspect(x, "mcmc")`, under the `coef()` names. Measured
+  before it was written: the sampler object behind a blavaan fit is a
+  stanfit on the default target but a `CmdStanMCMC` on `target =
+  "cmdstan"`, and both are counted.
+* feat: `apa_inline()` reports a `sem_fit` table. A lavaan row prints
+  `χ²(24) = 85.31, *p* < .001, CFI = .931, TLI = .896, RMSEA = .092, 90%
+  CI [.071, .114], SRMR = .065`, a blavaan row `PPP = .030, BRMSEA =
+  .094, 90% HDI [.071, .119], BΓ̂ = .983, 90% HDI [.973, .990]`. The
+  indices print with three decimals and χ² with two unless `digits` sets
+  both, and `stats` selects among them. Under `interval = FALSE, digits =
+  2, markup = "latex"` a blavaan row reproduces the miniQ manuscript's
+  `fmt_bfit()` character for character.
+* feat: `apa_tidy_sem_fit()` on a blavaan fit gains `centrality =
+  c("median", "mean")`. The mean is blavaan's `EAP` summary, which is
+  what the miniQ manuscript reports; without it its numbers could not be
+  reproduced.
+* fix: a diagnostics table no longer claims a median in its print
+  header; its `centrality` attribute is `NA`.
+* internal: an `apabayes_results` object may carry one string for the
+  whole table instead of one per row, which the convergence sentence
+  needs.
+
 * feat: `apa_inline()`, the inline layer (Milestone 3, first slice).
   One row of a tidy table becomes the string a Results section quotes:
   `*b* = −5.34, 95% CrI [−6.85, −3.82], *pd* > .999` for a regression

@@ -42,8 +42,10 @@ class, so \code{papaja::apa_table()} accepts it.
 
 \describe{
 \item{\code{estimate}}{character; the estimate with its interval, one
-per reported row (\verb{*b* = 0.31, 95\% CrI [0.12, 0.50]}). \code{NA} for a
-table kind that has no estimate.}
+per reported row (\verb{*b* = 0.31, 95\% CrI [0.12, 0.50]}), or one for
+the whole table when the string describes all of it, as
+\code{\link[=apa_convergence]{apa_convergence()}}'s does. \code{NA} for a table kind that has no
+estimate.}
 \item{\code{statistic}}{character; the statistics that follow it
 (\verb{*pd* > .999}), or \code{NA} when the row carries none.}
 \item{\code{full_result}}{character; the two joined with a comma, which

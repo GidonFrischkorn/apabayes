@@ -257,9 +257,13 @@ check_blavaan_single_group <- function(x, call = rlang::caller_env()) {
 #' @param fit_ci_level Mass of the fit indices' credible interval,
 #'   separate from the `ci_level` of the parameter table; blavaan's own
 #'   default is `0.90`.
+#' @param centrality The posterior summary of BRMSEA and BGammaHat:
+#'   `"median"` (the default) or `"mean"`, blavaan's `EAP` column. The
+#'   interval is the same highest-density interval either way.
 #' @export
 apa_tidy_sem_fit.blavaan <- function(x,
                                      model = NA_character_,
+                                     centrality = c("median", "mean"),
                                      # `pD` is blavaan's own spelling of
                                      # the argument (`blavFitIndices(pD
                                      # = )`), kept so that it is not
@@ -273,6 +277,7 @@ apa_tidy_sem_fit.blavaan <- function(x,
   rlang::check_installed("blavaan", reason = "to read blavaan objects.")
   rlang::check_installed("lavaan", reason = "to read blavaan objects.")
   model <- check_sem_model(model)
+  centrality <- rlang::arg_match(centrality)
   # nolint next: object_name_linter. blavaan's spelling; see the formals.
   pD <- rlang::arg_match(pD)
   rescale <- rlang::arg_match(rescale)
@@ -290,7 +295,7 @@ apa_tidy_sem_fit.blavaan <- function(x,
     )
   }
 
-  indices <- blavaan_fit_indices(x, pD, rescale, fit_ci_level)
+  indices <- blavaan_fit_indices(x, pD, rescale, fit_ci_level, centrality)
   out <- data.frame(
     model = model,
     ppp = unname(lavaan::fitMeasures(x, "ppp")),
@@ -300,7 +305,7 @@ apa_tidy_sem_fit.blavaan <- function(x,
   apabayes_tidy(
     out,
     type = "sem_fit",
-    centrality = "median",
+    centrality = centrality,
     ci_method = "hdi",
     ci_level = fit_ci_level,
     source_class = as.character(class(x)),
@@ -318,19 +323,44 @@ apa_tidy_sem_fit.blavaan <- function(x,
 # 1e-6, while the equal-tailed interval differs), so this is the one
 # summary that reproduces the numbers blavaan itself publishes.
 # `adjBGammaHat` and `BMc` are computed too but have no contract column.
+# The centre column is named after the summary (measured: `Median` for
+# the median, `EAP` for the mean), and the bounds do not depend on it.
 # nolint next: object_name_linter. blavaan's spelling; see the formals.
-blavaan_fit_indices <- function(x, pD, rescale, fit_ci_level) {
+blavaan_fit_indices <- function(x, pD, rescale, fit_ci_level, centrality) {
   fi <- blavaan::blavFitIndices(x, pD = pD, rescale = rescale)
   summarised <- summary(
     fi,
-    central.tendency = "median", prob = fit_ci_level
+    central.tendency = centrality, prob = fit_ci_level
   )
+  centre <- if (centrality == "mean") "EAP" else "Median"
   list(
-    brmsea = summarised["BRMSEA", "Median"],
+    brmsea = summarised["BRMSEA", centre],
     brmsea_low = summarised["BRMSEA", "lower"],
     brmsea_high = summarised["BRMSEA", "upper"],
-    bgammahat = summarised["BGammaHat", "Median"],
+    bgammahat = summarised["BGammaHat", centre],
     bgammahat_low = summarised["BGammaHat", "lower"],
     bgammahat_high = summarised["BGammaHat", "upper"]
+  )
+}
+
+# ---- the diagnostics table ---------------------------------------------
+
+#' @describeIn apa_tidy_diagnostics A `blavaan` fit, which
+#'   [posterior::as_draws_df()] cannot read (measured). The chains are
+#'   `blavaan::blavInspect(x, "mcmc")`, named as `coef()` names the
+#'   parameters (`visual=~x2`, `x1~~x1`), and the diagnostics are
+#'   `posterior`'s, not the `rhat` and `neff` blavaan prints. A
+#'   multi-group fit is reported: its names carry the group suffix
+#'   (`visual=~x2.g2`).
+#' @export
+apa_tidy_diagnostics.blavaan <- function(x, variables = NULL, ...) {
+  rlang::check_installed("blavaan", reason = "to read blavaan objects.")
+  rlang::check_installed("posterior", reason = "to read blavaan draws.")
+  draws <- posterior::as_draws_df(blavaan::blavInspect(x, "mcmc"))
+  diagnostics_table(
+    draws, variables,
+    source_class = class(x),
+    packages = c("blavaan", "posterior", "apabayes"),
+    divergences = sampler_divergences(x)
   )
 }

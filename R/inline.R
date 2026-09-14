@@ -36,7 +36,20 @@
 #' prints the estimate, the interval at that row's level and the Bayes
 #' factor; `stats` can add the evidence ratio and the posterior
 #' probability. A `diagnostics` row prints R-hat and both effective
-#' sample sizes. Every number goes through the format layer
+#' sample sizes.
+#'
+#' A `sem_fit` row from [apa_tidy_sem_fit()] prints the indices it
+#' carries, in a fixed order: for a lavaan fit `χ²(df) = …, *p* …, CFI,
+#' TLI, RMSEA with its confidence interval, SRMR`; for a blavaan fit
+#' `PPP, BRMSEA and BΓ̂` with their credible intervals, labelled by the
+#' table's `ci_method`. The indices print with three decimals and no
+#' leading zero and χ² with two, unless `digits` sets both; `stats`
+#' selects among `"chisq"` (with its *p*), `"cfi"`, `"tli"`,
+#' `"rmsea"`, `"srmr"`, `"ppp"`, `"brmsea"` and `"bgammahat"`. The
+#' default method extracts with [apa_tidy()], which is the parameter
+#' table, so fit indices are reported from `apa_tidy_sem_fit(fit)`.
+#'
+#' Every number goes through the format layer
 #' ([apa_num()], [apa_ci()], [apa_pd()], [apa_bf()], [apa_p()]), and
 #' nothing printed judges the result.
 #'
@@ -65,18 +78,20 @@
 #'   subset of what the row can print: `"pd"`, `"rope"`, `"bf"`, `"p"`
 #'   for a parameters row (the default prints every one the row
 #'   carries); `"bf"`, `"er"`, `"post_prob"` for a hypotheses row (the
-#'   default prints the Bayes factor alone). `character()` prints the
-#'   estimate alone.
+#'   default prints the Bayes factor alone); the index names above for a
+#'   sem_fit row. `character()` prints the estimate alone.
 #' @param interval `FALSE` drops the interval.
 #' @param ci_label `"auto"` labels the interval from the row's
 #'   `ci_method`; a string overrides it; `NULL` keeps the brackets and
 #'   drops the label. A row whose `ci_level` is `NA` prints the brackets
 #'   alone whatever `ci_label` says, because a label without its level
 #'   would claim more than the table records.
-#' @param digits Decimals for estimates and interval bounds; `NULL` is 2.
+#' @param digits Decimals for estimates and interval bounds; `NULL` is 2,
+#'   and on a sem_fit row 3 for the indices and 2 for χ².
 #' @param digits_prob Decimals for pd, p and the ROPE share.
 #' @param leading_zero `"auto"` drops the leading zero on standardized
-#'   rows and keeps it elsewhere; `TRUE` or `FALSE` force one rule.
+#'   rows and on fit indices and keeps it elsewhere; `TRUE` or `FALSE`
+#'   force one rule.
 #' @param bf,bf_direction Passed to [apa_bf()] as `style` and
 #'   `direction`.
 #' @inheritParams apa_num
@@ -153,15 +168,20 @@ apa_inline.default <- function(x, term = NULL, rhs = NULL, op = NULL,
 
 # ---- options -------------------------------------------------------------
 
-# The table kinds slice 1 of the inline layer prints. The others abort by
+# The table kinds the inline layer prints so far. The others abort by
 # name rather than print a partial string.
-inline_types <- function() c("parameters", "hypotheses", "diagnostics")
+inline_types <- function() {
+  c("parameters", "hypotheses", "diagnostics", "sem_fit")
+}
 
 # The statistics a type can print after the estimate, in print order.
 inline_stats_vocabulary <- function(type) {
   switch(type,
     parameters = c("pd", "rope", "bf", "p"),
     hypotheses = c("bf", "er", "post_prob"),
+    sem_fit = c(
+      "chisq", "cfi", "tli", "rmsea", "srmr", "ppp", "brmsea", "bgammahat"
+    ),
     character()
   )
 }
@@ -180,8 +200,13 @@ inline_options <- function(type, symbol, stats, interval, ci_label, digits,
   stats <- check_inline_stats(stats, type, call)
   check_flag(interval, call = call)
   check_inline_ci_label(ci_label, call)
-  digits <- digits %||% 2
-  check_digits(digits, call = call)
+  if (!is.null(digits)) {
+    check_digits(digits, call = call)
+  }
+  # A fit-index row resolves `NULL` per statistic (see inline_sem_fit()).
+  if (type != "sem_fit") {
+    digits <- digits %||% 2
+  }
   check_digits(digits_prob, min = 1, call = call)
   check_leading_zero(leading_zero, call)
   bf <- rlang::arg_match(bf, c("auto", "sci", "plain"), error_call = call)

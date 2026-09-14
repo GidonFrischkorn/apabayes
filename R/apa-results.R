@@ -16,8 +16,10 @@
 #' @section Elements:
 #' \describe{
 #'   \item{`estimate`}{character; the estimate with its interval, one
-#'     per reported row (`*b* = 0.31, 95% CrI [0.12, 0.50]`). `NA` for a
-#'     table kind that has no estimate.}
+#'     per reported row (`*b* = 0.31, 95% CrI [0.12, 0.50]`), or one for
+#'     the whole table when the string describes all of it, as
+#'     [apa_convergence()]'s does. `NA` for a table kind that has no
+#'     estimate.}
 #'   \item{`statistic`}{character; the statistics that follow it
 #'     (`*pd* > .999`), or `NA` when the row carries none.}
 #'   \item{`full_result`}{character; the two joined with a comma, which
@@ -59,8 +61,9 @@
 NULL
 
 # The constructor. `table` is the rows the strings describe; the three
-# string vectors have one element per row. Extra named elements (the
-# `passed` flag of apa_convergence()) travel through `...`.
+# string vectors have one element per row, or one element for the whole
+# table (the convergence sentence of apa_convergence()). Extra named
+# elements (its `passed` flag and `summary`) travel through `...`.
 new_apa_results <- function(estimate, statistic, full_result, table,
                             markup, ...) {
   if (!is_apabayes_tidy(table)) {
@@ -76,11 +79,13 @@ new_apa_results <- function(estimate, statistic, full_result, table,
   )
   for (nm in names(strings)) {
     v <- strings[[nm]]
-    if (!is.character(v) || length(v) != n) {
+    if (!is.character(v) || !length(v) %in% c(n, 1L)) {
+      # nolint next: object_usage_linter. Used in the cli string below.
+      allowed <- if (n == 1L) "1" else paste(n, "or 1")
       cli::cli_abort(
-        "{.arg {nm}} must be a character vector of length {n} (one per
-         row of {.arg table}), not {.cls {class(v)}} of length
-         {length(v)}."
+        "{.arg {nm}} must be a character vector of length {allowed} (one
+         per row of {.arg table}, or one for the whole table), not
+         {.cls {class(v)}} of length {length(v)}."
       )
     }
   }
