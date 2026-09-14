@@ -140,6 +140,23 @@ apply_label_overrides <- function(out, labels, terms) {
   out
 }
 
+# Split lavaan-style parameter names (`visual=~x1`, `x1~1`, `ab:=a*b`)
+# into left-hand side, operator and right-hand side. Operators longest
+# first so that `=~` and `~~` are not read as `~`; `~1` has an empty
+# right-hand side. lavaan appends `.g2` to every name from the second
+# group of a multi-group fit (measured, lavaan route); that suffix is
+# stripped from the right-hand side because the `group` column carries
+# the group. A name without an operator gives NA in every column.
+sem_term_parts <- function(terms) {
+  pattern <- "^(.*?)(=~|~~|:=|~\\*~|~1|~)(.*)$"
+  hit <- grepl(pattern, terms)
+  lhs <- rhs <- op <- rep(NA_character_, length(terms))
+  lhs[hit] <- sub(pattern, "\\1", terms[hit])
+  op[hit] <- sub(pattern, "\\2", terms[hit])
+  rhs[hit] <- sub("\\.g[0-9]+$", "", sub(pattern, "\\3", terms[hit]))
+  data.frame(lhs = lhs, op = op, rhs = rhs, stringsAsFactors = FALSE)
+}
+
 # The `variables =` selection of a parameters route: `NULL` keeps every
 # row easystats returned, in its order; names are matched verbatim
 # against `Parameter`.

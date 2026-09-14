@@ -181,12 +181,10 @@ blavaan_rows <- function(tbl, terms, labels, centrality, ci, ci_level, std) {
 # an intercept has an empty right-hand side, so `x1 ~1`). blavaan's
 # `pretty_names` is the identity (measured), so the shared
 # `parameters_labels()` would add nothing, and the parameter name is
-# parsed here instead. The operators are lavaan's, longest first so that
-# `=~` and `~~` are not read as `~`.
+# parsed here instead, through the shared `sem_term_parts()`.
 blavaan_labels <- function(terms, labels) {
-  out <- trimws(sub(
-    "^(.*?)(=~|~~|:=|~\\*~|~1|~)(.*)$", "\\1 \\2 \\3", terms
-  ))
+  parts <- sem_term_parts(terms)
+  out <- trimws(paste(parts$lhs, parts$op, parts$rhs))
   apply_label_overrides(out, labels, terms)
 }
 

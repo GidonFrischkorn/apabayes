@@ -1,5 +1,39 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_inline()`, the inline layer (Milestone 3, first slice).
+  One row of a tidy table becomes the string a Results section quotes:
+  `*b* = −5.34, 95% CrI [−6.85, −3.82], *pd* > .999` for a regression
+  coefficient, `.45, 95% CrI [.33, .57], *pd* > .999` for a standardized
+  path, `−5.36, 90% CrI [−6.69, −4.02], *BF*~10~ = ∞` for a
+  `brms::hypothesis()` row, and R-hat with both effective sample sizes
+  for a diagnostics row. The row is addressed by name only: a term, a
+  label, a hypothesis string, or a structural-equation path by its two
+  sides and operator (`apa_inline(x, "visual", "textual", op = "~~")`,
+  order-insensitive for a covariance and for nothing else), with
+  `group =` for a multi-group fit. No match or several matches is an
+  error listing the candidates. Every number goes through the format
+  layer; the interval label follows the row's own `ci_method`, so a table
+  of HDIs says `HDI` and a lavaan table says `CI`. The default method
+  runs `apa_tidy(x, ...)` first, so every class that has an extract
+  route can be reported from the fit as well as from a stored table.
+  Tables of type `sem_fit`, `loo`, `bf_models` and `contrasts` are
+  refused by name until their slices land.
+* feat: the `apabayes_results` object, the inline layer's return value:
+  `estimate`, `statistic`, `full_result` and `table`, papaja's shape,
+  inheriting papaja's `apa_results` class so that `papaja::apa_table()`
+  accepts it. Measured before it was written: knitr's inline hook
+  ignores `as.character`, `format` and `print` methods and prints every
+  element of a list, so bare `` `r apa_inline(fit, "wt")` `` works
+  through a `knit_print` method registered on knitr, which stays in
+  Suggests. (papaja's own object needs `$full_result` inline for the
+  same reason.)
+* internal: `sem_term_parts()` in `R/extract-shared.R` splits a
+  lavaan-style parameter name into its sides and operator, for the
+  blavaan labels and the inline addressing alike; `blavaan_labels()` now
+  uses it. No behaviour change.
+* chore: the maintainer address is `gfrischkorn@icloud.com`, and the
+  design record, the specs and the fixture builders are kept outside the
+  tracked tree.
 * feat: `apa_tidy()` gains a `brmshypothesis` method, for the output of
   `brms::hypothesis()`. It is the first route that calls no easystats
   function: easystats has no method for the class, so the numbers are

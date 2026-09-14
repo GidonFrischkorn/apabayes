@@ -1,0 +1,190 @@
+# The strings of the inline layer, one builder per tidy type. Each takes
+# the selected rows and the resolved options and returns a data frame
+# with an `estimate` and a `statistic` string per row (`NA` where a row
+# has none). Every number passes through the format layer; nothing here
+# rounds, and nothing here attaches a word to a number.
+
+inline_strings <- function(x, opts) {
+  switch(opts$type,
+    parameters = inline_parameters(x, opts),
+    hypotheses = inline_hypotheses(x, opts),
+    diagnostics = inline_diagnostics(x, opts)
+  )
+}
+
+# ---- shared pieces -------------------------------------------------------
+
+# The interval label a `ci_method` value earns in text. `wald` and `boot`
+# are confidence intervals; an unknown or missing method prints the
+# neutral `CI` rather than claiming a credible interval.
+ci_label_of <- function(method) {
+  labels <- c(
+    eti = "CrI", hdi = "HDI", hpd = "HPD", spi = "SPI", bci = "BCI",
+    wald = "CI", boot = "CI"
+  )
+  out <- unname(labels[method])
+  out[is.na(out)] <- "CI"
+  out
+}
+
+# `estimate[, interval]` for one row, with an optional italic symbol in
+# front. `level` may be NA (no level recorded): the brackets then print
+# without a label whatever `ci_label` asked for — a label without its
+# level would claim more than the table records — and the level handed
+# to apa_ci() is unused.
+inline_estimate_row <- function(estimate, low, high, method, level, sym,
+                                leading_zero, opts) {
+  m <- opts$markup
+  est <- apa_num(estimate, opts$digits, leading_zero, markup = m)
+  if (!is.na(sym)) {
+    est <- stat_string(markup(sym, m, italic = TRUE), est)
+  }
+  if (!opts$interval || is.na(low) || is.na(high)) {
+    return(est)
+  }
+  label <- opts$ci_label
+  if (identical(label, "auto")) {
+    label <- ci_label_of(method)
+  }
+  if (is.na(level)) {
+    label <- NULL
+    level <- 0.95
+  }
+  paste0(est, ", ", apa_ci(
+    low, high,
+    level = level, label = label, digits = opts$digits,
+    leading_zero = leading_zero, markup = m
+  ))
+}
+
+# Row-wise over a table, so that per-row levels, methods, symbols and
+# leading-zero rules are honoured.
+inline_estimates <- function(x, sym, leading_zero, opts) {
+  vapply(seq_len(nrow(x)), function(i) {
+    inline_estimate_row(
+      x$estimate[i], x$ci_low[i], x$ci_high[i], x$ci_method[i],
+      x$ci_level[i], sym[i], leading_zero[i], opts
+    )
+  }, character(1))
+}
+
+# Join the statistic parts of each row with ", ", dropping NA parts; a
+# row with no part at all is NA.
+join_columns <- function(parts, n) {
+  parts <- Filter(Negate(is.null), parts)
+  vapply(seq_len(n), function(i) {
+    v <- vapply(parts, function(p) p[i], character(1))
+    v <- v[!is.na(v)]
+    if (length(v) == 0) NA_character_ else paste(v, collapse = ", ")
+  }, character(1))
+}
+
+# `estimate, statistic`, or whichever of the two exists.
+join_parts <- function(estimate, statistic) {
+  out <- paste(estimate, statistic, sep = ", ")
+  out[is.na(statistic)] <- estimate[is.na(statistic)]
+  out[is.na(estimate)] <- statistic[is.na(estimate)]
+  out
+}
+
+# The symbol of a row under `symbol = NULL`: `b` for a population-level
+# regression coefficient — `component` "conditional" on a row that is
+# not a random-effect term (measured: brms puts `sd_*` rows under
+# "conditional" too, with `effects` "random") — and none elsewhere.
+resolve_symbols <- function(x, symbol) {
+  n <- nrow(x)
+  if (isFALSE(symbol)) {
+    return(rep(NA_character_, n))
+  }
+  if (!is.null(symbol)) {
+    return(rep(symbol, n))
+  }
+  coefficient <- !is.na(x$component) & x$component == "conditional" &
+    (is.na(x$effects) | x$effects == "fixed")
+  ifelse(coefficient, "b", NA_character_)
+}
+
+# `leading_zero` per row: "auto" keeps it except on a standardized row.
+resolve_leading_zero <- function(x, leading_zero) {
+  if (identical(leading_zero, "auto")) {
+    std <- if ("std" %in% names(x)) x$std else rep(NA, nrow(x))
+    return(!(std %in% TRUE))
+  }
+  rep(leading_zero, nrow(x))
+}
+
+# ---- parameters ----------------------------------------------------------
+
+inline_parameters <- function(x, opts) {
+  m <- opts$markup
+  sym <- resolve_symbols(x, opts$symbol)
+  lz <- resolve_leading_zero(x, opts$leading_zero)
+  s <- opts$stats
+  parts <- list(
+    pd = if ("pd" %in% s) {
+      apa_pd(x$pd, opts$digits_prob, markup = m, symbol = TRUE)
+    },
+    rope = if ("rope" %in% s) rope_string(x$rope_pct, m),
+    bf = if ("bf" %in% s) {
+      apa_bf(x$bf, opts$bf_direction, opts$bf, markup = m, symbol = TRUE)
+    },
+    p = if ("p" %in% s) {
+      apa_p(x$p, opts$digits_prob, markup = m, symbol = TRUE)
+    }
+  )
+  data.frame(
+    estimate = inline_estimates(x, sym, lz, opts),
+    statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# `12.3% in ROPE`; NA stays NA.
+rope_string <- function(rope_pct, markup) {
+  out <- paste0(apa_prob(rope_pct, percent = TRUE, markup = markup), " in ROPE")
+  out[is.na(rope_pct)] <- NA_character_
+  out
+}
+
+# ---- hypotheses ----------------------------------------------------------
+
+inline_hypotheses <- function(x, opts) {
+  m <- opts$markup
+  sym <- if (rlang::is_string(opts$symbol)) {
+    rep(opts$symbol, nrow(x))
+  } else {
+    rep(NA_character_, nrow(x))
+  }
+  lz <- resolve_leading_zero(x, opts$leading_zero)
+  s <- opts$stats
+  parts <- list(
+    bf = if ("bf" %in% s) {
+      apa_bf(x$bf10, opts$bf_direction, opts$bf, markup = m, symbol = TRUE)
+    },
+    er = if ("er" %in% s) apa_er(x$evid_ratio, markup = m, symbol = TRUE),
+    post_prob = if ("post_prob" %in% s) {
+      stat_string(
+        paste0(markup("P", m, italic = TRUE), "(H)"),
+        apa_prob(x$post_prob, opts$digits_prob, markup = m)
+      )
+    }
+  )
+  data.frame(
+    estimate = inline_estimates(x, sym, lz, opts),
+    statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# ---- diagnostics ---------------------------------------------------------
+
+inline_diagnostics <- function(x, opts) {
+  data.frame(
+    estimate = rep(NA_character_, nrow(x)),
+    statistic = apa_rhat_ess(
+      x$rhat, x$ess_bulk, x$ess_tail,
+      digits = opts$digits, markup = opts$markup
+    ),
+    stringsAsFactors = FALSE
+  )
+}
