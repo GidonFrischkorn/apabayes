@@ -3,7 +3,7 @@ Title: Report Bayesian and Structural Equation Models in APA Style for
     apaquarto
 Version: 0.0.0.9000
 Authors@R:
-    person("Gidon T.", "Frischkorn", , "gidon.frischkorn@psychologie.uzh.ch", role = c("aut", "cre", "cph"),
+    person("Gidon T.", "Frischkorn", , "gfrischkorn@icloud.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-5055-9764"))
 Description: Inline strings and tables in American Psychological
     Association style, seventh edition, for Bayesian regression models

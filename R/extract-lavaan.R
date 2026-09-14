@@ -265,7 +265,7 @@ check_standardize <- function(standardize, call = rlang::caller_env()) {
 #' [blavaan::blavFitIndices()]. The two are complementary: a fit of one
 #' kind carries none of the other's indices, and those columns are `NA`.
 #' apabayes computes no index of its own, and none of its output judges a
-#' fit (ARCHITECTURE.md decision 24).
+#' fit.
 #'
 #' @param x A fitted model.
 #' @param ... Passed to the method.

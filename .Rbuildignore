@@ -2,9 +2,7 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
-^ARCHITECTURE\.md$
 ^local$
-^data-raw$
 ^\.github$
 ^_pkgdown\.yml$
 ^docs$
@@ -16,5 +14,4 @@
 ^\.quarto$
 ^\.claude$
 ^CLAUDE\.md$
-^dev$
 ^Rplots\.pdf$

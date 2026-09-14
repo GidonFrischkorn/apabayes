@@ -1,7 +1,8 @@
 # Test-run setup (ARCHITECTURE.md § Tests).
 #
-# Fixtures are read from tests/testthat/fixtures/ and are built by
-# data-raw/fixtures.R; they carry no fitted model, so the extract tests
+# Fixtures are read from tests/testthat/fixtures/ and are built by the
+# fixture builder kept with the design record (local/data-raw/fixtures.R,
+# not shipped); they carry no fitted model, so the extract tests
 # run on CRAN. The brms fits are the exception: decision 1 keeps fitted
 # objects out of the tarball, so a test that needs a live fit calls
 # `test_brms_fit()`, which fits once per test run, off CRAN only, and

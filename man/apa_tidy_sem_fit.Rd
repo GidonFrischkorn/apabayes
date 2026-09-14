@@ -78,7 +78,7 @@ intervals, from \code{\link[lavaan:fitMeasures]{lavaan::fitMeasures()}} and
 \code{\link[blavaan:blavFitIndices]{blavaan::blavFitIndices()}}. The two are complementary: a fit of one
 kind carries none of the other's indices, and those columns are \code{NA}.
 apabayes computes no index of its own, and none of its output judges a
-fit (ARCHITECTURE.md decision 24).
+fit.
 }
 \section{Methods (by class)}{
 \itemize{

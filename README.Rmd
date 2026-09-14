@@ -30,8 +30,7 @@ posterior contrasts. Every number comes from the easystats packages
 (`parameters`, `bayestestR`, `performance`, `insight`); apabayes
 selects, arranges and formats.
 
-The package is under construction. The design record is
-[ARCHITECTURE.md](ARCHITECTURE.md).
+The package is in development; 0.1.0 is the first planned release.
 
 ## Installation
 

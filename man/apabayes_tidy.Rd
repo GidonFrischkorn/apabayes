@@ -105,8 +105,9 @@ model puts a parameter in.}
 
 The other contracts are \code{"diagnostics"} (\code{term}, \code{rhat}, \code{ess_bulk},
 \code{ess_tail}), \code{"hypotheses"}, \code{"loo"}, \code{"bf_models"}, \code{"sem_fit"} and
-\code{"contrasts"}; their columns follow the tables in \code{ARCHITECTURE.md}.
-Columns beyond the contract are kept, after the contract columns.
+\code{"contrasts"}; the print method lists the columns of each, and every
+extract method documents the ones it fills. Columns beyond the
+contract are kept, after the contract columns.
 }
 
 \section{Metadata}{

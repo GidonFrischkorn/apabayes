@@ -224,8 +224,9 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #'
 #' The other contracts are `"diagnostics"` (`term`, `rhat`, `ess_bulk`,
 #' `ess_tail`), `"hypotheses"`, `"loo"`, `"bf_models"`, `"sem_fit"` and
-#' `"contrasts"`; their columns follow the tables in `ARCHITECTURE.md`.
-#' Columns beyond the contract are kept, after the contract columns.
+#' `"contrasts"`; the print method lists the columns of each, and every
+#' extract method documents the ones it fills. Columns beyond the
+#' contract are kept, after the contract columns.
 #'
 #' @section Metadata:
 #' `type`, `centrality`, `ci_method`, `ci_level`, `source_class` and

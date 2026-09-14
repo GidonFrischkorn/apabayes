@@ -209,4 +209,4 @@
   BF01; `apa_bf_label()` is the opt-in helper that returns a verbal
   category from a named scheme (`"jeffreys"`, `"raftery"`), with the
   caveat on its help page.
-* Package skeleton and design record (`ARCHITECTURE.md`).
+* Package skeleton.
