@@ -29,6 +29,10 @@
 #'   \item{`markup`}{the markup target the strings were written for.}
 #' }
 #'
+#' `papaja::apa_print()` on an apabayes object returns the three string
+#' elements as named lists instead, one element per row (see
+#' [apabayes-papaja]); `print()` then writes each string after its name.
+#'
 #' @section In a document:
 #' Inline code such as `` `r apa_inline(fit, "wt")` `` prints
 #' `full_result` through a `knit_print` method; no `$full_result` is
@@ -108,27 +112,37 @@ is_apa_results <- function(x) {
 #' @rdname apa_results
 #' @export
 print.apabayes_results <- function(x, ...) {
-  cat(x$full_result, sep = "\n")
+  strings <- result_strings(x)
+  if (is.list(x$full_result)) {
+    strings <- paste0(names(x$full_result), ": ", strings)
+  }
+  cat(strings, sep = "\n")
   invisible(x)
 }
 
 #' @rdname apa_results
 #' @export
 format.apabayes_results <- function(x, ...) {
-  x$full_result
+  result_strings(x)
 }
 
 #' @rdname apa_results
 #' @export
 as.character.apabayes_results <- function(x, ...) {
-  x$full_result
+  result_strings(x)
 }
 
 #' @rdname apa_results
 #' @exportS3Method knitr::knit_print
 knit_print.apabayes_results <- function(x, ..., inline = FALSE) {
   if (inline) {
-    return(x$full_result)
+    return(result_strings(x))
   }
   knitr::normal_print(x)
+}
+
+# `full_result` as an unnamed character vector, whether it is one (from
+# apa_inline()) or a named list (from papaja::apa_print()).
+result_strings <- function(x) {
+  unlist(x$full_result, use.names = FALSE)
 }

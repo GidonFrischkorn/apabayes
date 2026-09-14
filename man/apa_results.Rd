@@ -54,6 +54,10 @@ is what prints.}
 its attributes.}
 \item{\code{markup}}{the markup target the strings were written for.}
 }
+
+\code{papaja::apa_print()} on an apabayes object returns the three string
+elements as named lists instead, one element per row (see
+\link{apabayes-papaja}); \code{print()} then writes each string after its name.
 }
 
 \section{In a document}{

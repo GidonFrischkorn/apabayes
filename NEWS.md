@@ -1,5 +1,15 @@
 # apabayes 0.0.0.9000
 
+* feat: `papaja::apa_print()` works on `brmsfit`, `stanreg`, `lavaan`,
+  `blavaan` and `brmshypothesis` objects and on stored `apabayes_tidy`
+  tables (Milestone 3, third slice). The methods are registered when
+  papaja is installed, which stays optional, and call `apa_inline()`.
+  Without a term the result has papaja's shape: `estimate`, `statistic`
+  and `full_result` are named lists, one string per row, named by
+  papaja's own rule (`apa_print(fit)$full_result$wt`,
+  `$visual_x2`); with a term they are the strings `apa_inline()`
+  returns. `in_paren = TRUE` writes brackets for parentheses. papaja's
+  own methods for `BFBayesFactor` and `emmGrid` are left alone.
 * feat: `apa_convergence()`, the convergence sentence (Milestone 3,
   second slice). From a fit or a stored diagnostics table it states
   R-hat, both effective sample sizes and the divergent transitions over
