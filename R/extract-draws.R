@@ -71,6 +71,22 @@
 #' means <- emmeans::emmeans(grid, ~cyl_f)
 #' apa_tidy(means)
 #' apa_tidy(emmeans::contrast(means, "pairwise"), rope = c(-1, 1))
+#' @examplesIf rlang::is_installed(c("modelbased", "rstanarm"))
+#'
+#' # A modelbased table is reported as it stands. It records its interval
+#' # only in its call: none named there is modelbased's equal-tailed
+#' # default, and a variable there has to be named with `ci =`.
+#' \donttest{
+#' cars <- transform(mtcars, cyl_f = factor(cyl))
+#' fit <- rstanarm::stan_glm(
+#'   mpg ~ wt + cyl_f,
+#'   data = cars, chains = 2, iter = 1000, seed = 1, refresh = 0
+#' )
+#' apa_tidy(modelbased::estimate_contrasts(fit, contrast = "cyl_f"))
+#' method <- "hdi"
+#' means <- modelbased::estimate_means(fit, by = "cyl_f", ci_method = method)
+#' apa_tidy(means, ci = "hdi")
+#' }
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")

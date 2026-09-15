@@ -12,8 +12,10 @@
 #' apabayes reports: a brms fit, an rstanarm fit, a lavaan or blavaan
 #' fit, a brms hypothesis test, a LOO comparison from
 #' [loo::loo_compare()], a Bayes-factor model comparison from
-#' [bayestestR::bayesfactor_models()], and a stored [apabayes_tidy]
-#' table. Each
+#' [bayestestR::bayesfactor_models()], a table of contrasts or marginal
+#' means from [modelbased::estimate_contrasts()] or
+#' [modelbased::estimate_means()], and a stored [apabayes_tidy] table.
+#' Each
 #' method calls [apa_inline()] and returns its result in the shape papaja
 #' users address, so `apa_print(fit)$full_result$wt` works as it does on
 #' an `lm`.
@@ -43,7 +45,8 @@
 #' (`$full_result$cyl_f4_cyl_f6`).
 #'
 #' @param x A `brmsfit`, `stanreg`, `lavaan`, `blavaan`,
-#'   `brmshypothesis`, `compare.loo` or `bayesfactor_models` object, or an
+#'   `brmshypothesis`, `compare.loo`, `bayesfactor_models`,
+#'   `estimate_contrasts` or `estimate_means` object, or an
 #'   [apabayes_tidy] table.
 #' @param term The row to report, as in [apa_inline()]; `NULL` reports
 #'   every row as named lists.
@@ -113,6 +116,19 @@ apa_print.compare.loo <- function(x, term = NULL, ..., in_paren = FALSE) {
 #' @exportS3Method papaja::apa_print bayesfactor_models
 apa_print.bayesfactor_models <- function(x, term = NULL, ...,
                                          in_paren = FALSE) {
+  apa_print_apabayes(x, term, ..., in_paren = in_paren)
+}
+
+#' @rdname apabayes-papaja
+#' @exportS3Method papaja::apa_print estimate_contrasts
+apa_print.estimate_contrasts <- function(x, term = NULL, ...,
+                                         in_paren = FALSE) {
+  apa_print_apabayes(x, term, ..., in_paren = in_paren)
+}
+
+#' @rdname apabayes-papaja
+#' @exportS3Method papaja::apa_print estimate_means
+apa_print.estimate_means <- function(x, term = NULL, ..., in_paren = FALSE) {
   apa_print_apabayes(x, term, ..., in_paren = in_paren)
 }
 

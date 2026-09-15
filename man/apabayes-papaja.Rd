@@ -10,6 +10,8 @@
 \alias{apa_print.brmshypothesis}
 \alias{apa_print.compare.loo}
 \alias{apa_print.bayesfactor_models}
+\alias{apa_print.estimate_contrasts}
+\alias{apa_print.estimate_means}
 \title{Results for papaja's \code{apa_print()}}
 \usage{
 \method{apa_print}{apabayes_tidy}(x, term = NULL, ..., in_paren = FALSE)
@@ -27,10 +29,15 @@
 apa_print.compare.loo(x, term = NULL, ..., in_paren = FALSE)
 
 apa_print.bayesfactor_models(x, term = NULL, ..., in_paren = FALSE)
+
+apa_print.estimate_contrasts(x, term = NULL, ..., in_paren = FALSE)
+
+apa_print.estimate_means(x, term = NULL, ..., in_paren = FALSE)
 }
 \arguments{
 \item{x}{A \code{brmsfit}, \code{stanreg}, \code{lavaan}, \code{blavaan},
-\code{brmshypothesis}, \code{compare.loo} or \code{bayesfactor_models} object, or an
+\code{brmshypothesis}, \code{compare.loo}, \code{bayesfactor_models},
+\code{estimate_contrasts} or \code{estimate_means} object, or an
 \link{apabayes_tidy} table.}
 
 \item{term}{The row to report, as in \code{\link[=apa_inline]{apa_inline()}}; \code{NULL} reports
@@ -53,8 +60,10 @@ When papaja is installed, \code{papaja::apa_print()} works on the objects
 apabayes reports: a brms fit, an rstanarm fit, a lavaan or blavaan
 fit, a brms hypothesis test, a LOO comparison from
 \code{\link[loo:loo_compare]{loo::loo_compare()}}, a Bayes-factor model comparison from
-\code{\link[bayestestR:bayesfactor_models]{bayestestR::bayesfactor_models()}}, and a stored \link{apabayes_tidy}
-table. Each
+\code{\link[bayestestR:bayesfactor_models]{bayestestR::bayesfactor_models()}}, a table of contrasts or marginal
+means from \code{\link[modelbased:estimate_contrasts]{modelbased::estimate_contrasts()}} or
+\code{\link[modelbased:estimate_means]{modelbased::estimate_means()}}, and a stored \link{apabayes_tidy} table.
+Each
 method calls \code{\link[=apa_inline]{apa_inline()}} and returns its result in the shape papaja
 users address, so \code{apa_print(fit)$full_result$wt} works as it does on
 an \code{lm}.

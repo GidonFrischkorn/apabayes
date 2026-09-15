@@ -1,5 +1,19 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` reports a table from `modelbased::estimate_contrasts()`
+  or `modelbased::estimate_means()` on a Bayesian fit as a `contrasts`
+  table, the contract the emmeans route fills. Rows are named as
+  modelbased names them (`6 - 4`, `6, auto - 4, auto`, a mean by its row
+  values), a `by` variable's values fill `group`, and every number,
+  the ROPE share and its bounds included, is read from the table. The
+  table records its interval only in its call, so `ci = NULL` reads it
+  there (modelbased's equal-tailed default when no `ci_method` was
+  passed); when the call gives `ci_method` as a variable, `ci = "eti"`
+  or `"hdi"` names it, and a `ci` that contradicts the call is refused.
+  Tables from `backend = "emmeans"` (whose estimate column does not say
+  which centrality it holds) and from frequentist models are refused.
+  `papaja::apa_print()` works on both classes. `modelbased` joins
+  Suggests.
 * fix: `apa_tidy()` no longer reads any data frame as draws. A plain data
   frame, tibble or data.table of numeric columns still is; a data frame
   with a class of its own (a modelbased or easystats table, a

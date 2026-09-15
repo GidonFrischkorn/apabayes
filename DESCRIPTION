@@ -36,6 +36,7 @@ Suggests:
     knitr,
     lavaan,
     loo,
+    modelbased,
     papaja,
     posterior,
     rstan,

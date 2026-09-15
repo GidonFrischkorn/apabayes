@@ -233,3 +233,45 @@ test_that("a Bayesian emmGrid still reaches papaja's own apa_print()", {
   )
   expect_identical(environmentName(environment(method)), "papaja")
 })
+
+# ---- modelbased tables ---------------------------------------------------
+
+test_that("a modelbased contrast prints with its own interval label", {
+  x <- fixture("mb_contrasts")
+  tab <- apa_tidy(x)
+  row <- tab[1, ]
+  r <- apa_inline(x, "6 - 4", markup = "md")
+  expect_identical(r$estimate, expected_estimate(row, "md", label = "CrI"))
+  expect_identical(
+    r$statistic,
+    paste0(
+      apa_pd(row$pd, 3, markup = "md", symbol = TRUE), ", ",
+      apa_prob(row$rope_pct, percent = TRUE, markup = "md"), " in ROPE"
+    )
+  )
+  hdi <- apa_inline(fixture("mb_contrasts_hdi"), "6 - 4", markup = "md")
+  expect_match(hdi$estimate, "95% HDI [", fixed = TRUE)
+  expect_error(apa_inline(x, "4 - 6"), "6 - 4")
+})
+
+test_that("a modelbased contrast within by groups is addressed by group", {
+  x <- fixture("mb_contrasts_by")
+  expect_error(apa_inline(x, "6 - 4"), "differ by group")
+  r <- apa_inline(x, "6 - 4", group = "manual")
+  expect_identical(r$table$am_f, "manual")
+  expect_identical(apa_inline(fixture("mb_means"), "8")$table$cyl_f, "8")
+})
+
+test_that("apa_print() on a modelbased table is its tidy table's", {
+  skip_if_not_installed("papaja")
+  for (name in c("mb_contrasts", "mb_means")) {
+    x <- fixture(name)
+    expect_identical(
+      papaja::apa_print(x),
+      papaja::apa_print(apa_tidy(x)),
+      label = name
+    )
+  }
+  x <- fixture("mb_contrasts")
+  expect_named(papaja::apa_print(x)$full_result, c("6_4", "8_4", "8_6"))
+})
