@@ -4,7 +4,7 @@
 # has none). Every number passes through the format layer; nothing here
 # rounds, and nothing here attaches a word to a number.
 
-inline_strings <- function(x, opts) {
+inline_strings <- function(x, opts, call = rlang::caller_env()) {
   switch(opts$type,
     parameters = inline_parameters(x, opts),
     hypotheses = inline_hypotheses(x, opts),
@@ -12,6 +12,7 @@ inline_strings <- function(x, opts) {
     sem_fit = inline_sem_fit(x, opts),
     loo = inline_loo(x, opts),
     bf_models = inline_bf_models(x, opts),
+    bf_inclusion = inline_bf_inclusion(x, opts, call),
     contrasts = inline_contrasts(x, opts),
     correlations = inline_correlations(x, opts)
   )
@@ -449,6 +450,9 @@ inline_bf_models <- function(x, opts) {
   if ("bf" %in% s) {
     log_part[lost] <- NA_character_
   }
+  if ("error" %in% s) {
+    bf_part <- with_bf_error(bf_part, x$error, m)
+  }
   parts <- list(
     bf = if ("bf" %in% s) bf_part,
     log_bf = if ("log_bf" %in% s) log_part,
@@ -464,4 +468,101 @@ inline_bf_models <- function(x, opts) {
     statistic = join_columns(parts, nrow(x)),
     stringsAsFactors = FALSE
   )
+}
+
+# `*BF*~10~ = 86.59 ± < 0.1%`: BayesFactor's proportional error, after the
+# Bayes factor (or the log a lost one prints). apa_prob() floors an exact
+# 0 to "< 0.1%" (measured), which would claim an error there is none of,
+# so 0 prints as itself; an unknown error adds nothing.
+with_bf_error <- function(bf_part, error, m) {
+  error_string <- apa_prob(error, percent = TRUE, markup = m)
+  error_string[!is.na(error) & error == 0] <- "0%"
+  add <- !is.na(bf_part) & !is.na(error)
+  bf_part[add] <- paste0(
+    bf_part[add], " ", symbol("pm", m), " ", error_string[add]
+  )
+  bf_part
+}
+
+# ---- bf_inclusion --------------------------------------------------------
+
+# `*BF*~incl~ = 1.9 × 10^4^`, or `*BF*~excl~` under `bf_direction = "01"`,
+# with the overflow rule of the bf_models rows. A term in every model has
+# no inclusion Bayes factor and a posterior inclusion probability rounded
+# to 1 or 0 an infinite one; neither is a number to print, so printing
+# the Bayes factor of such a row aborts with the reason, and the
+# probabilities alone still print.
+inline_bf_inclusion <- function(x, opts, call = rlang::caller_env()) {
+  m <- opts$markup
+  s <- opts$stats
+  if ("bf" %in% s) {
+    check_inclusion_bf(x, call)
+  }
+  lz <- if (identical(opts$leading_zero, "auto")) TRUE else opts$leading_zero
+  direction <- opts$bf_direction
+  bf_name <- markup(
+    "BF", m,
+    italic = TRUE, subscript = if (direction == "01") "excl" else "incl"
+  )
+  log_bf <- if (direction == "01") -x$log_bf else x$log_bf
+  bf_part <- stat_string(bf_name, apa_bf(x$bf, direction, opts$bf, markup = m))
+  lost <- !is.na(x$bf) & (is.infinite(x$bf) | x$bf == 0) &
+    is.finite(x$log_bf)
+  bf_part[lost] <- stat_string(
+    paste0("log(", bf_name, ")"),
+    apa_num(log_bf[lost], opts$digits, lz, markup = m)
+  )
+  probability <- function(label, value) {
+    stat_string(
+      paste0(markup("P", m, italic = TRUE), label),
+      apa_prob(value, opts$digits_prob, markup = m)
+    )
+  }
+  parts <- list(
+    bf = if ("bf" %in% s) bf_part,
+    p_prior = if ("p_prior" %in% s) probability("(incl)", x$p_prior),
+    p_posterior = if ("p_posterior" %in% s) {
+      probability("(incl | D)", x$p_posterior)
+    }
+  )
+  data.frame(
+    estimate = rep(NA_character_, nrow(x)),
+    statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# The log Bayes factor where the table has one, else the log of `bf`, so
+# that a hand-built table with `bf` alone still prints.
+check_inclusion_bf <- function(x, call = rlang::caller_env()) {
+  log_bf <- ifelse(is.na(x$log_bf), log(x$bf), x$log_bf)
+  unknown <- is.na(log_bf)
+  if (any(unknown)) {
+    # nolint next: object_usage_linter. Used in the cli string below.
+    terms <- x$term[unknown]
+    cli::cli_abort(
+      c(
+        "{.val {terms}} {?has/have} no inclusion Bayes factor.",
+        i = "Is it in every model? Such a term (or one no Bayes factor was
+             computed for) has none.",
+        i = "Report {.val p_prior} and {.val p_posterior} with
+             {.arg stats}."
+      ),
+      call = call
+    )
+  }
+  infinite <- is.infinite(log_bf)
+  if (any(infinite)) {
+    # nolint next: object_usage_linter. Used in the cli string below.
+    terms <- x$term[infinite]
+    cli::cli_abort(
+      c(
+        "{.val {terms}} {?has/have} an infinite inclusion Bayes factor.",
+        i = "Its posterior inclusion probability rounded to 1 or 0.",
+        i = "Report {.val p_posterior} with {.arg stats}."
+      ),
+      call = call
+    )
+  }
+  invisible(x)
 }

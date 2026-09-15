@@ -59,12 +59,25 @@
 #' `bf_models` row prints its Bayes factor against the table's
 #' denominator model, `*BF*~10~ = 6.38` (the denominator itself prints
 #' `1.00`); `stats` adds `"log_bf"` and `"post_prob"`, the posterior
-#' model probability under equal prior odds, `*P*(M | D)`. A Bayes
+#' model probability under equal prior odds, `*P*(M | D)`, and
+#' `"error"`, the numerical error of a BayesFactor Bayes factor as a
+#' percentage after the Bayes factor it qualifies,
+#' `*BF*~10~ = 4.5 × 10^6^ ± 1.3%` (`± 0%` for an exact one, nothing
+#' where none is recorded); `"error"` needs `"bf"`. A Bayes
 #' factor too large or too small to exponentiate (a log Bayes factor
 #' beyond about ±709) prints as its log instead, never as `∞` or `0`.
 #' Such a row is addressed by `model`, and a Bayes-factor row also by
 #' the `name` it was passed as. LOO and Bayes-factor comparisons answer
 #' different questions and are never merged into one string.
+#'
+#' A `bf_inclusion` row from [bayestestR::bayesfactor_inclusion()] prints
+#' its inclusion Bayes factor, `*BF*~incl~ = 1.9 × 10^4^`, or under
+#' `bf_direction = "01"` the exclusion Bayes factor `*BF*~excl~`; `stats`
+#' adds the prior and posterior inclusion probabilities, `*P*(incl) =
+#' .50` and `*P*(incl | D) = .55`. A term in every model has no inclusion
+#' Bayes factor, and a posterior inclusion probability rounded to 1 or 0
+#' an infinite one; printing the Bayes factor of such a row is an error
+#' that says which. A row is addressed by its `term`.
 #'
 #' A `contrasts` row from an emmeans grid prints like a parameters row:
 #' the estimate, its interval labelled from the row's `ci_method`
@@ -122,7 +135,9 @@
 #'   default prints the Bayes factor alone); the index names above for a
 #'   sem_fit row; `"elpd_diff"`, `"elpd"`, `"p_loo"`, `"looic"`,
 #'   `"weight"` for a loo row (default `"elpd_diff"`); `"bf"`,
-#'   `"log_bf"`, `"post_prob"` for a bf_models row (default `"bf"`);
+#'   `"error"`, `"log_bf"`, `"post_prob"` for a bf_models row (default
+#'   `"bf"`); `"bf"`, `"p_prior"`, `"p_posterior"` for a bf_inclusion row
+#'   (default `"bf"`);
 #'   `"pd"`, `"rope"` for a contrasts row (the default prints both when
 #'   the row carries them); `"pd"`, `"rope"`, `"bf"`, `"n"` for a
 #'   correlations row (default `c("pd", "bf")`). `character()` prints the
@@ -222,7 +237,7 @@ apa_inline.default <- function(x, term = NULL, rhs = NULL, op = NULL,
 inline_types <- function() {
   c(
     "parameters", "hypotheses", "diagnostics", "sem_fit", "loo", "bf_models",
-    "contrasts", "correlations"
+    "bf_inclusion", "contrasts", "correlations"
   )
 }
 
@@ -235,7 +250,8 @@ inline_stats_vocabulary <- function(type) {
       "chisq", "cfi", "tli", "rmsea", "srmr", "ppp", "brmsea", "bgammahat"
     ),
     loo = c("elpd_diff", "elpd", "p_loo", "looic", "weight"),
-    bf_models = c("bf", "log_bf", "post_prob"),
+    bf_models = c("bf", "error", "log_bf", "post_prob"),
+    bf_inclusion = c("bf", "p_prior", "p_posterior"),
     contrasts = c("pd", "rope"),
     correlations = c("pd", "rope", "bf", "n"),
     character()
@@ -252,6 +268,7 @@ inline_default_stats <- function(type) {
     hypotheses = "bf",
     loo = "elpd_diff",
     bf_models = "bf",
+    bf_inclusion = "bf",
     correlations = c("pd", "bf"),
     inline_stats_vocabulary(type)
   )
@@ -269,6 +286,7 @@ inline_options <- function(type, symbol, stats, interval, ci_label, digits,
   }
   check_inline_symbol(symbol, call)
   stats <- check_inline_stats(stats, type, call)
+  check_inline_error_stat(stats, call)
   check_flag(interval, call = call)
   check_inline_ci_label(ci_label, call)
   if (!is.null(digits)) {
@@ -333,6 +351,21 @@ check_inline_stats <- function(stats, type, call = rlang::caller_env()) {
     ), call = call)
   }
   vocabulary[vocabulary %in% stats]
+}
+
+# The error of a Bayes factor is printed after it, never on its own
+# (spec-apa_tidy_BFBayesFactor.md § 5).
+check_inline_error_stat <- function(stats, call = rlang::caller_env()) {
+  if ("error" %in% stats && !"bf" %in% stats) {
+    cli::cli_abort(
+      c(
+        "{.arg stats} names {.val error} without {.val bf}.",
+        i = "{.val error} qualifies the Bayes factor; ask for both."
+      ),
+      call = call
+    )
+  }
+  invisible(stats)
 }
 
 check_inline_ci_label <- function(ci_label, call = rlang::caller_env()) {

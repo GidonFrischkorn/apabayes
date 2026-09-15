@@ -10,8 +10,8 @@
 apabayes_tidy(
   x,
   ...,
-  type = c("parameters", "diagnostics", "hypotheses", "loo", "bf_models", "sem_fit",
-    "contrasts", "correlations"),
+  type = c("parameters", "diagnostics", "hypotheses", "loo", "bf_models", "bf_inclusion",
+    "sem_fit", "contrasts", "correlations"),
   centrality = c("median", "mean"),
   ci_method = "eti",
   ci_level = 0.95,
@@ -32,7 +32,7 @@ is_apabayes_tidy(x)
 
 \item{type}{Which column contract applies: one of \code{"parameters"},
 \code{"diagnostics"}, \code{"hypotheses"}, \code{"loo"}, \code{"bf_models"},
-\code{"sem_fit"}, \code{"contrasts"}, \code{"correlations"}.}
+\code{"bf_inclusion"}, \code{"sem_fit"}, \code{"contrasts"}, \code{"correlations"}.}
 
 \item{centrality}{\code{"median"} or \code{"mean"}; what \code{estimate} holds. \code{NA}
 when the estimate is not a posterior summary (a lavaan
@@ -104,7 +104,11 @@ model puts a parameter in.}
 }
 
 The other contracts are \code{"diagnostics"} (\code{term}, \code{rhat}, \code{ess_bulk},
-\code{ess_tail}), \code{"hypotheses"}, \code{"loo"}, \code{"bf_models"}, \code{"sem_fit"} and
+\code{ess_tail}), \code{"hypotheses"}, \code{"loo"}, \code{"bf_models"} (\code{model}, \code{bf},
+\code{log_bf}, \code{denominator}, \code{method}, \code{post_prob}, and \code{error}, the
+proportional numerical error of the Bayes factor where BayesFactor
+records one), \code{"bf_inclusion"} (\code{term}, \code{p_prior}, \code{p_posterior},
+\code{bf}, \code{log_bf}: inclusion Bayes factors), \code{"sem_fit"},
 \code{"contrasts"} (\code{contrast}, \code{group} for the \code{by} variable's value,
 \code{estimate}, the interval columns, \code{pd}, \code{rope_pct}) and
 \code{"correlations"} (\code{term} as \code{var1~~var2}, \code{var1}, \code{var2}, \code{group},

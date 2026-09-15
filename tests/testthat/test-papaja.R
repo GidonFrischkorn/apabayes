@@ -185,7 +185,8 @@ test_that("the methods are registered on papaja's generic, and only those", {
   ours <- paste0("apa_print.", c(
     "brmsfit", "stanreg", "lavaan", "blavaan", "brmshypothesis",
     "apabayes_tidy", "compare.loo", "bayesfactor_models",
-    "estimate_contrasts", "estimate_means", "easycorrelation"
+    "bayesfactor_inclusion", "estimate_contrasts", "estimate_means",
+    "easycorrelation"
   ))
   expect_true(all(ours %in% registered))
   s3 <- get(".__S3MethodsTable__.", envir = asNamespace("papaja"))
@@ -193,6 +194,16 @@ test_that("the methods are registered on papaja's generic, and only those", {
     method <- get(paste0("apa_print.", cls), envir = s3)
     expect_identical(environmentName(environment(method)), "papaja")
   }
+})
+
+test_that("apa_print() reaches the bf_inclusion route, and is registered", {
+  skip_if_not_installed("papaja")
+  inc <- fixture("inc_anova")
+  r <- papaja::apa_print(inc)
+  expect_identical(
+    r$full_result$am_f_cyl_f,
+    apa_inline(inc, "am_f:cyl_f")$full_result
+  )
 })
 
 test_that("a lavaan fit dispatches through papaja::apa_print", {

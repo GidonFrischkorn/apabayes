@@ -12,7 +12,8 @@
 #' apabayes reports: a brms fit, an rstanarm fit, a lavaan or blavaan
 #' fit, a brms hypothesis test, a LOO comparison from
 #' [loo::loo_compare()], a Bayes-factor model comparison from
-#' [bayestestR::bayesfactor_models()], a table of contrasts or marginal
+#' [bayestestR::bayesfactor_models()], inclusion Bayes factors from
+#' [bayestestR::bayesfactor_inclusion()], a table of contrasts or marginal
 #' means from [modelbased::estimate_contrasts()] or
 #' [modelbased::estimate_means()], a table of Bayesian correlations from
 #' [correlation::correlation()], and a stored [apabayes_tidy] table.
@@ -40,7 +41,9 @@
 #' inline code needs no `$full_result` for a single result.
 #'
 #' papaja owns `apa_print()` methods for `emmGrid` and `BFBayesFactor`
-#' objects, and apabayes never replaces them. papaja's `emmGrid` method
+#' objects, and apabayes never replaces them; the Bayes-factor table
+#' apabayes reads from a `BFBayesFactor` object is reported with
+#' `apa_print(apa_tidy(bf))`. papaja's `emmGrid` method
 #' reports a frequentist grid; on a grid from a Bayesian fit it prints
 #' the estimate alone. Report such a grid through its tidy table,
 #' `apa_print(apa_tidy(grid))`, which names the rows as papaja does
@@ -48,7 +51,8 @@
 #'
 #' @param x A `brmsfit`, `stanreg`, `lavaan`, `blavaan`,
 #'   `brmshypothesis`, `compare.loo`, `bayesfactor_models`,
-#'   `estimate_contrasts`, `estimate_means` or `easycorrelation` object,
+#'   `bayesfactor_inclusion`, `estimate_contrasts`, `estimate_means` or
+#'   `easycorrelation` object,
 #'   or an [apabayes_tidy] table.
 #' @param term The row to report, as in [apa_inline()]; `NULL` reports
 #'   every row as named lists.
@@ -118,6 +122,13 @@ apa_print.compare.loo <- function(x, term = NULL, ..., in_paren = FALSE) {
 #' @exportS3Method papaja::apa_print bayesfactor_models
 apa_print.bayesfactor_models <- function(x, term = NULL, ...,
                                          in_paren = FALSE) {
+  apa_print_apabayes(x, term, ..., in_paren = in_paren)
+}
+
+#' @rdname apabayes-papaja
+#' @exportS3Method papaja::apa_print bayesfactor_inclusion
+apa_print.bayesfactor_inclusion <- function(x, term = NULL, ...,
+                                            in_paren = FALSE) {
   apa_print_apabayes(x, term, ..., in_paren = in_paren)
 }
 

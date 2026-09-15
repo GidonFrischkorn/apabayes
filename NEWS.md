@@ -1,5 +1,36 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` reports a `BayesFactor` object (`ttestBF()`,
+  `anovaBF()`, `regressionBF()`, `correlationBF()`,
+  `contingencyTableBF()`, …) as a `bf_models` table read from the
+  object itself: the denominator first, then each numerator, labelled as
+  BayesFactor prints them (`"Intercept only"`, `"wt + hp"`,
+  `"Alt., r=0.707"`), with the formula or full description in `name`,
+  the method BayesFactor used (`"JZS (BayesFactor)"`,
+  `"Jeffreys-beta* (BayesFactor)"`) and its proportional error.
+  `bayestestR::bayesfactor_models()` on the same object keeps the
+  numbers but calls every method JZS, relabels contingency models
+  wrongly and drops the error. A numerator that is the denominator model
+  is listed once. The `bf_models` contract gains an `error` column, and
+  `apa_inline(stats = c("bf", "error"))` prints
+  `*BF*~10~ = 4.5 × 10^6^ ± 1.3%`.
+* feat: `apa_tidy()` on `BayesFactor::posterior()` output reports the
+  posterior through the draws route, without posterior's warning about
+  the S4 class. A `BFBayesFactorList` is refused (report a column,
+  `x[, j]`), and so is a `parameters::model_parameters()` table of a
+  BayesFactor object, which summarises only the first numerator and can
+  misalign its Bayes factors.
+* feat: `apa_tidy()` reports inclusion Bayes factors from
+  `bayestestR::bayesfactor_inclusion()` as a new `bf_inclusion` table
+  (`term`, `p_prior`, `p_posterior`, `bf`, `log_bf`; attributes for
+  matched-model averaging and custom prior odds). The object does not
+  record how the underlying Bayes factors were computed. `apa_inline()`
+  prints `*BF*~incl~ = 1.9 × 10^4^`, `*BF*~excl~` under
+  `bf_direction = "01"`, and the prior and posterior inclusion
+  probabilities on request; a row with no finite inclusion Bayes factor
+  (a term in every model, or a probability rounded to 1) is refused
+  rather than printed as `∞`. `papaja::apa_print()` works on the class.
+
 * feat: `apa_tidy()` reports Bayesian correlations from
   `correlation::correlation()` or `correlation::cor_test()` (with
   `bayesian = TRUE`) as a new `correlations` table: one row per pair,

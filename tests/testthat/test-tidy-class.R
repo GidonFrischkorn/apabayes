@@ -283,6 +283,39 @@ test_that("every type constructs from its required columns", {
   )
 })
 
+test_that("bf_models has an error column, after post_prob", {
+  b <- test_bf_models_lm()
+  out <- apa_tidy(b)
+  expect_identical(
+    names(out),
+    c(
+      "model", "bf", "log_bf", "denominator", "method", "post_prob",
+      "error", "name"
+    )
+  )
+  expect_identical(out$error, rep(NA_real_, nrow(out)))
+})
+
+test_that("bf_inclusion constructs from term and bf", {
+  out <- apabayes_tidy(
+    data.frame(term = "am_f", bf = 3.2),
+    type = "bf_inclusion"
+  )
+  expect_identical(
+    names(out),
+    c("term", "p_prior", "p_posterior", "bf", "log_bf")
+  )
+  expect_identical(attr(out, "type"), "bf_inclusion")
+  expect_error(
+    apabayes_tidy(data.frame(bf = 3.2), type = "bf_inclusion"),
+    "term"
+  )
+  expect_error(
+    apabayes_tidy(data.frame(term = "am_f"), type = "bf_inclusion"),
+    "bf"
+  )
+})
+
 test_that("print writes the two header lines and returns invisibly", {
   out <- apabayes_tidy(minimal(), source_class = c("stanfit"))
 

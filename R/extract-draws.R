@@ -102,6 +102,18 @@
 #'   bayesian = TRUE, bayesian_ci_method = "eti"
 #' )
 #' apa_tidy(r_eti, ci = "eti")
+#' @examplesIf rlang::is_installed("BayesFactor")
+#'
+#' # A BayesFactor object is read as a table of model comparisons, with
+#' # BayesFactor's own names, prior family and numerical error; its
+#' # inclusion Bayes factors come from bayestestR; its estimates from the
+#' # draws of `BayesFactor::posterior()`.
+#' cars <- transform(mtcars, am_f = factor(am), vs_f = factor(vs))
+#' bf <- BayesFactor::anovaBF(mpg ~ am_f * vs_f, data = cars, progress = FALSE)
+#' apa_tidy(bf)
+#' apa_tidy(bayestestR::bayesfactor_inclusion(bf))
+#' bf_t <- BayesFactor::ttestBF(formula = mpg ~ am_f, data = cars)
+#' apa_tidy(BayesFactor::posterior(bf_t, iterations = 500, progress = FALSE))
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")

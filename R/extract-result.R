@@ -19,6 +19,9 @@
 #'   several `ci` levels — is refused here rather than coerced to draws.
 #' @export
 apa_tidy.parameters_model <- function(x, ...) {
+  # Before the `describe_posterior` test: a contingency table's summary
+  # inherits it (measured session 25).
+  refuse_bayesfactor_parameters(x)
   if (!inherits(x, "describe_posterior")) {
     refuse_parameters_model(x)
   }
@@ -94,6 +97,30 @@ refuse_parameters_model <- function(x, call = rlang::caller_env()) {
   }
   cli::cli_abort(
     "{.arg x} is not a posterior summary {.fn apa_tidy} can read.",
+    call = call
+  )
+}
+
+# Measured session 25: on a BayesFactor object with several numerators,
+# `model_parameters()` summarises the first and recycles the numerators'
+# Bayes factors down its parameter rows, and records neither.
+refuse_bayesfactor_parameters <- function(x, call = rlang::caller_env()) {
+  model_class <- attr(x, "model_class", exact = TRUE)
+  from_bf <- is.character(model_class) &&
+    isTRUE(any(startsWith(model_class, "BFBayesFactor")))
+  if (!from_bf) {
+    return(invisible(x))
+  }
+  cli::cli_abort(
+    c(
+      "{.arg x} is a {.fn parameters::model_parameters} table of a
+       {.cls BFBayesFactor} object: it cannot say which numerator it
+       summarises, and its Bayes factor column can be misaligned with its
+       rows.",
+      i = "For the Bayes factors, use {.code apa_tidy(<bf>)}.",
+      i = "For estimates, use
+           {.code apa_tidy(BayesFactor::posterior(<bf>, index = ))}."
+    ),
     call = call
   )
 }

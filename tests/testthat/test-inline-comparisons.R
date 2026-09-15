@@ -224,6 +224,164 @@ test_that("bf = 'sci' reaches apa_bf()", {
   )
 })
 
+# ---- bf_models: error -----------------------------------------------------
+
+test_that("the bf_models inline vocabulary gains error, default stays bf", {
+  expect_identical(
+    inline_stats_vocabulary("bf_models"),
+    c("bf", "error", "log_bf", "post_prob")
+  )
+  expect_identical(inline_default_stats("bf_models"), "bf")
+})
+
+test_that("stats = 'error' alone is refused: it qualifies the Bayes factor", {
+  skip_if_not_installed("BayesFactor")
+  tab <- apa_tidy(fixture("bf_anova"))
+  expect_error(apa_inline(tab, stats = "error"), "error")
+  expect_error(apa_inline(tab, stats = "error"), "qualifies")
+})
+
+test_that("the error rides along with the Bayes factor, in a percent", {
+  skip_if_not_installed("BayesFactor")
+  tab <- apa_tidy(fixture("bf_anova"))
+  row <- tab[tab$model == "am_f + cyl_f", ]
+  r <- apa_inline(tab, "am_f + cyl_f", stats = c("bf", "error"), markup = "md")
+  expected <- paste0(
+    apa_bf(row$bf, markup = "md", symbol = TRUE),
+    " ± ", apa_prob(row$error, percent = TRUE, markup = "md")
+  )
+  expect_identical(r$full_result, expected)
+
+  small <- tab[tab$model == "am_f", ]
+  r2 <- apa_inline(tab, "am_f", stats = c("bf", "error"), markup = "md")
+  expected2 <- paste0(
+    apa_bf(small$bf, markup = "md", symbol = TRUE),
+    " ± ", apa_prob(small$error, percent = TRUE, markup = "md")
+  )
+  expect_identical(r2$full_result, expected2)
+  expect_identical(
+    apa_prob(small$error, percent = TRUE, markup = "md"), "< 0.1%"
+  )
+})
+
+test_that("a zero error prints literally as 0%, and NA adds nothing", {
+  skip_if_not_installed("BayesFactor")
+  cont_tab <- apa_tidy(fixture("bf_contingency"))
+  row <- cont_tab[!cont_tab$denominator, ]
+  expect_identical(row$error, 0)
+  r <- apa_inline(
+    cont_tab, row$model[1],
+    stats = c("bf", "error"), markup = "md"
+  )
+  expected <- paste0(apa_bf(row$bf[1], markup = "md", symbol = TRUE), " ± 0%")
+  expect_identical(r$full_result, expected)
+
+  anova_tab <- apa_tidy(fixture("bf_anova"))
+  denom_row <- anova_tab[anova_tab$denominator, ]
+  expect_true(is.na(denom_row$error))
+  r_denom <- apa_inline(
+    anova_tab, denom_row$model[1],
+    stats = c("bf", "error"), markup = "md"
+  )
+  expected_denom <- apa_bf(denom_row$bf[1], markup = "md", symbol = TRUE)
+  expect_identical(r_denom$full_result, expected_denom)
+})
+
+test_that("bf_direction = '01' keeps the same error", {
+  skip_if_not_installed("BayesFactor")
+  tab <- apa_tidy(fixture("bf_anova"))
+  row <- tab[tab$model == "am_f + cyl_f", ]
+  r <- apa_inline(
+    tab, "am_f + cyl_f",
+    stats = c("bf", "error"), bf_direction = "01", markup = "md"
+  )
+  expected <- paste0(
+    apa_bf(row$bf, "01", markup = "md", symbol = TRUE),
+    " ± ", apa_prob(row$error, percent = TRUE, markup = "md")
+  )
+  expect_identical(r$full_result, expected)
+})
+
+test_that("an overflowing row prints its log Bayes factor with the error", {
+  skip_if_not_installed("BayesFactor")
+  tab <- apa_tidy(fixture("bf_overflow"))
+  row <- tab[!tab$denominator, ]
+  r <- apa_inline(tab, row$model[1], stats = c("bf", "error"), markup = "md")
+  expected <- paste0(
+    "log(*BF*~10~) = ", apa_num(row$log_bf[1], markup = "md"),
+    " ± ", apa_prob(row$error[1], percent = TRUE, markup = "md")
+  )
+  expect_identical(r$full_result, expected)
+})
+
+# ---- bf_inclusion -----------------------------------------------------------
+
+test_that("the bf_inclusion type is built", {
+  expect_true("bf_inclusion" %in% inline_types())
+  expect_identical(
+    inline_stats_vocabulary("bf_inclusion"),
+    c("bf", "p_prior", "p_posterior")
+  )
+  expect_identical(inline_default_stats("bf_inclusion"), "bf")
+})
+
+test_that("a bf_inclusion row prints its inclusion Bayes factor by default", {
+  tab <- apa_tidy(fixture("inc_anova"))
+  row <- tab[tab$term == "am_f", ]
+  r <- apa_inline(tab, "am_f", markup = "md")
+  expected <- stat_string(
+    markup("BF", "md", italic = TRUE, subscript = "incl"),
+    apa_bf(row$bf, markup = "md")
+  )
+  expect_identical(r$full_result, expected)
+  expect_identical(r$estimate, NA_character_)
+})
+
+test_that("bf_direction = '01' prints the exclusion Bayes factor", {
+  tab <- apa_tidy(fixture("inc_anova"))
+  row <- tab[tab$term == "am_f", ]
+  r <- apa_inline(tab, "am_f", bf_direction = "01", markup = "md")
+  expected <- stat_string(
+    markup("BF", "md", italic = TRUE, subscript = "excl"),
+    apa_bf(1 / row$bf, markup = "md")
+  )
+  expect_identical(r$full_result, expected)
+})
+
+test_that("p_prior and p_posterior print with apa_prob()", {
+  tab <- apa_tidy(fixture("inc_anova"))
+  row <- tab[tab$term == "am_f", ]
+  r <- apa_inline(
+    tab, "am_f",
+    stats = c("p_prior", "p_posterior"), markup = "md"
+  )
+  expected <- paste0(
+    stat_string(
+      paste0(markup("P", "md", italic = TRUE), "(incl)"),
+      apa_prob(row$p_prior, 3, markup = "md")
+    ),
+    ", ",
+    stat_string(
+      paste0(markup("P", "md", italic = TRUE), "(incl | D)"),
+      apa_prob(row$p_posterior, 3, markup = "md")
+    )
+  )
+  expect_identical(r$full_result, expected)
+})
+
+test_that("an NA log Bayes factor aborts naming the term and 'every model'", {
+  tab <- apa_tidy(fixture("inc_random"))
+  expect_error(apa_inline(tab, "id"), "id")
+  expect_error(apa_inline(tab, "id"), "every model")
+  expect_no_error(apa_inline(tab, "id", stats = "p_prior"))
+})
+
+test_that("an infinite log Bayes factor aborts naming the term and 'rounded'", {
+  tab <- apa_tidy(fixture("inc_inf"))
+  expect_error(apa_inline(tab, "x"), "x")
+  expect_error(apa_inline(tab, "x"), "rounded")
+})
+
 # ---- addressing ----------------------------------------------------------
 
 test_that("a loo row is addressed by its model", {

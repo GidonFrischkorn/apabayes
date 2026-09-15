@@ -10,6 +10,7 @@
 \alias{apa_print.brmshypothesis}
 \alias{apa_print.compare.loo}
 \alias{apa_print.bayesfactor_models}
+\alias{apa_print.bayesfactor_inclusion}
 \alias{apa_print.estimate_contrasts}
 \alias{apa_print.estimate_means}
 \alias{apa_print.easycorrelation}
@@ -31,6 +32,8 @@ apa_print.compare.loo(x, term = NULL, ..., in_paren = FALSE)
 
 apa_print.bayesfactor_models(x, term = NULL, ..., in_paren = FALSE)
 
+apa_print.bayesfactor_inclusion(x, term = NULL, ..., in_paren = FALSE)
+
 apa_print.estimate_contrasts(x, term = NULL, ..., in_paren = FALSE)
 
 apa_print.estimate_means(x, term = NULL, ..., in_paren = FALSE)
@@ -40,7 +43,8 @@ apa_print.easycorrelation(x, term = NULL, ..., in_paren = FALSE)
 \arguments{
 \item{x}{A \code{brmsfit}, \code{stanreg}, \code{lavaan}, \code{blavaan},
 \code{brmshypothesis}, \code{compare.loo}, \code{bayesfactor_models},
-\code{estimate_contrasts}, \code{estimate_means} or \code{easycorrelation} object,
+\code{bayesfactor_inclusion}, \code{estimate_contrasts}, \code{estimate_means} or
+\code{easycorrelation} object,
 or an \link{apabayes_tidy} table.}
 
 \item{term}{The row to report, as in \code{\link[=apa_inline]{apa_inline()}}; \code{NULL} reports
@@ -63,7 +67,8 @@ When papaja is installed, \code{papaja::apa_print()} works on the objects
 apabayes reports: a brms fit, an rstanarm fit, a lavaan or blavaan
 fit, a brms hypothesis test, a LOO comparison from
 \code{\link[loo:loo_compare]{loo::loo_compare()}}, a Bayes-factor model comparison from
-\code{\link[bayestestR:bayesfactor_models]{bayestestR::bayesfactor_models()}}, a table of contrasts or marginal
+\code{\link[bayestestR:bayesfactor_models]{bayestestR::bayesfactor_models()}}, inclusion Bayes factors from
+\code{\link[bayestestR:bayesfactor_inclusion]{bayestestR::bayesfactor_inclusion()}}, a table of contrasts or marginal
 means from \code{\link[modelbased:estimate_contrasts]{modelbased::estimate_contrasts()}} or
 \code{\link[modelbased:estimate_means]{modelbased::estimate_means()}}, a table of Bayesian correlations from
 \code{\link[correlation:correlation]{correlation::correlation()}}, and a stored \link{apabayes_tidy} table.
@@ -92,7 +97,9 @@ the LaTeX math papaja writes, and print with a \code{knit_print} method, so
 inline code needs no \verb{$full_result} for a single result.
 
 papaja owns \code{apa_print()} methods for \code{emmGrid} and \code{BFBayesFactor}
-objects, and apabayes never replaces them. papaja's \code{emmGrid} method
+objects, and apabayes never replaces them; the Bayes-factor table
+apabayes reads from a \code{BFBayesFactor} object is reported with
+\code{apa_print(apa_tidy(bf))}. papaja's \code{emmGrid} method
 reports a frequentist grid; on a grid from a Bayesian fit it prints
 the estimate alone. Report such a grid through its tidy table,
 \code{apa_print(apa_tidy(grid))}, which names the rows as papaja does

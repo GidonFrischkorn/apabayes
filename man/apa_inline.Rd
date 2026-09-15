@@ -77,7 +77,9 @@ carries); \code{"bf"}, \code{"er"}, \code{"post_prob"} for a hypotheses row (the
 default prints the Bayes factor alone); the index names above for a
 sem_fit row; \code{"elpd_diff"}, \code{"elpd"}, \code{"p_loo"}, \code{"looic"},
 \code{"weight"} for a loo row (default \code{"elpd_diff"}); \code{"bf"},
-\code{"log_bf"}, \code{"post_prob"} for a bf_models row (default \code{"bf"});
+\code{"error"}, \code{"log_bf"}, \code{"post_prob"} for a bf_models row (default
+\code{"bf"}); \code{"bf"}, \code{"p_prior"}, \code{"p_posterior"} for a bf_inclusion row
+(default \code{"bf"});
 \code{"pd"}, \code{"rope"} for a contrasts row (the default prints both when
 the row carries them); \code{"pd"}, \code{"rope"}, \code{"bf"}, \code{"n"} for a
 correlations row (default \code{c("pd", "bf")}). \code{character()} prints the
@@ -165,12 +167,24 @@ the table's \code{weight_method} attribute, not in the string). A
 \code{bf_models} row prints its Bayes factor against the table's
 denominator model, \verb{*BF*~10~ = 6.38} (the denominator itself prints
 \code{1.00}); \code{stats} adds \code{"log_bf"} and \code{"post_prob"}, the posterior
-model probability under equal prior odds, \verb{*P*(M | D)}. A Bayes
+model probability under equal prior odds, \verb{*P*(M | D)}, and
+\code{"error"}, the numerical error of a BayesFactor Bayes factor as a
+percentage after the Bayes factor it qualifies,
+\verb{*BF*~10~ = 4.5 × 10^6^ ± 1.3\%} (\verb{± 0\%} for an exact one, nothing
+where none is recorded); \code{"error"} needs \code{"bf"}. A Bayes
 factor too large or too small to exponentiate (a log Bayes factor
 beyond about ±709) prints as its log instead, never as \verb{∞} or \code{0}.
 Such a row is addressed by \code{model}, and a Bayes-factor row also by
 the \code{name} it was passed as. LOO and Bayes-factor comparisons answer
 different questions and are never merged into one string.
+
+A \code{bf_inclusion} row from \code{\link[bayestestR:bayesfactor_inclusion]{bayestestR::bayesfactor_inclusion()}} prints
+its inclusion Bayes factor, \verb{*BF*~incl~ = 1.9 × 10^4^}, or under
+\code{bf_direction = "01"} the exclusion Bayes factor \verb{*BF*~excl~}; \code{stats}
+adds the prior and posterior inclusion probabilities, \verb{*P*(incl) = .50} and \verb{*P*(incl | D) = .55}. A term in every model has no inclusion
+Bayes factor, and a posterior inclusion probability rounded to 1 or 0
+an infinite one; printing the Bayes factor of such a row is an error
+that says which. A row is addressed by its \code{term}.
 
 A \code{contrasts} row from an emmeans grid prints like a parameters row:
 the estimate, its interval labelled from the row's \code{ci_method}

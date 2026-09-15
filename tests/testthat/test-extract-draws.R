@@ -309,14 +309,12 @@ test_that("a data frame that is not draws is refused, not coerced", {
   df <- data.frame(mu = c(0.1, 0.4), sigma = c(1, 1.2))
 
   # A summary class with no route of its own (modelbased's classes have
-  # one since session 23).
+  # one since session 23, bayesfactor_inclusion since session 25).
   summary_table <- structure(
     df,
-    class = c(
-      "bayesfactor_inclusion", "see_bayesfactor_inclusion", "data.frame"
-    )
+    class = c("compare_performance", "see_compare_performance", "data.frame")
   )
-  expect_error(apa_tidy(summary_table), "bayesfactor_inclusion")
+  expect_error(apa_tidy(summary_table), "compare_performance")
   expect_error(apa_tidy(summary_table), "not draws", fixed = TRUE)
 
   labelled <- data.frame(mu = c(0.1, 0.4), term = c("a", "b"))

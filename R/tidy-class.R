@@ -44,7 +44,16 @@ tidy_contracts <- function() {
       required = c("model", "bf"),
       columns = c(
         model = "chr", bf = "dbl", log_bf = "dbl", denominator = "lgl",
-        method = "chr", post_prob = "dbl"
+        method = "chr", post_prob = "dbl", error = "dbl"
+      )
+    ),
+    # Joined with the BayesFactor routes (session 25): inclusion Bayes
+    # factors have terms, not models, and no denominator.
+    bf_inclusion = list(
+      required = c("term", "bf"),
+      columns = c(
+        term = "chr", p_prior = "dbl", p_posterior = "dbl", bf = "dbl",
+        log_bf = "dbl"
       )
     ),
     sem_fit = list(
@@ -242,7 +251,11 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' }
 #'
 #' The other contracts are `"diagnostics"` (`term`, `rhat`, `ess_bulk`,
-#' `ess_tail`), `"hypotheses"`, `"loo"`, `"bf_models"`, `"sem_fit"` and
+#' `ess_tail`), `"hypotheses"`, `"loo"`, `"bf_models"` (`model`, `bf`,
+#' `log_bf`, `denominator`, `method`, `post_prob`, and `error`, the
+#' proportional numerical error of the Bayes factor where BayesFactor
+#' records one), `"bf_inclusion"` (`term`, `p_prior`, `p_posterior`,
+#' `bf`, `log_bf`: inclusion Bayes factors), `"sem_fit"`,
 #' `"contrasts"` (`contrast`, `group` for the `by` variable's value,
 #' `estimate`, the interval columns, `pd`, `rope_pct`) and
 #' `"correlations"` (`term` as `var1~~var2`, `var1`, `var2`, `group`,
@@ -270,7 +283,7 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' @param x A data frame with at least the required columns of `type`.
 #' @param type Which column contract applies: one of `"parameters"`,
 #'   `"diagnostics"`, `"hypotheses"`, `"loo"`, `"bf_models"`,
-#'   `"sem_fit"`, `"contrasts"`, `"correlations"`.
+#'   `"bf_inclusion"`, `"sem_fit"`, `"contrasts"`, `"correlations"`.
 #' @param centrality `"median"` or `"mean"`; what `estimate` holds. `NA`
 #'   when the estimate is not a posterior summary (a lavaan
 #'   maximum-likelihood estimate).
@@ -307,7 +320,8 @@ apabayes_tidy <- function(x,
                           type = c(
                             "parameters", "diagnostics",
                             "hypotheses", "loo", "bf_models",
-                            "sem_fit", "contrasts", "correlations"
+                            "bf_inclusion", "sem_fit", "contrasts",
+                            "correlations"
                           ),
                           centrality = c("median", "mean"),
                           ci_method = "eti",

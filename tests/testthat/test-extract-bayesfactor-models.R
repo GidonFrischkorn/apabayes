@@ -22,8 +22,12 @@ test_that("apa_tidy() on a bayesfactor_models returns the bf_models contract", {
   expect_identical(attr(out, "type"), "bf_models")
   expect_identical(
     names(out),
-    c("model", "bf", "log_bf", "denominator", "method", "post_prob", "name")
+    c(
+      "model", "bf", "log_bf", "denominator", "method", "post_prob",
+      "error", "name"
+    )
   )
+  expect_identical(out$error, rep(NA_real_, nrow(out)))
   expect_identical(out$model, b$Model)
   expect_identical(out$log_bf, b$log_BF)
   expect_identical(out$bf, exp(b$log_BF))

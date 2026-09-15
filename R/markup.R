@@ -55,6 +55,7 @@ symbol_table <- rbind(
   chisq = c("\u03c7\u00b2", "$\\chi^2$", "\u03c7\u00b2", "chi2"),
   rhat = c("*R\u0302*", "$\\hat{R}$", "*R\u0302*", "Rhat"),
   delta = c("\u0394", "$\\Delta$", "\u0394", "Delta"),
+  pm = c("\u00b1", "$\\pm$", "\u00b1", "+/-"),
   # Upright: a capital Greek letter, as LaTeX's \Gamma sets it and as the
   # miniQ seed prints it (`B$\hat{\Gamma}$`).
   bgammahat = c(

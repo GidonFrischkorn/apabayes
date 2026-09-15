@@ -64,6 +64,7 @@ inline_id_columns <- function(type) {
     sem_fit = "model",
     loo = "model",
     bf_models = c("model", "name"),
+    bf_inclusion = "term",
     contrasts = "contrast",
     correlations = "term",
     "term"
