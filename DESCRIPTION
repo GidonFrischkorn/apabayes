@@ -22,6 +22,7 @@ BugReports: https://github.com/GidonFrischkorn/apabayes/issues
 Depends:
     R (>= 4.3.0)
 Imports:
+    apa7,
     bayestestR,
     cli,
     insight,

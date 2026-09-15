@@ -1,5 +1,25 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_table()` turns a parameters or diagnostics table, or any
+  object `apa_tidy()` accepts, into the tibble
+  `apa7::apa_flextable()` renders as it is: every value formatted to
+  text and decimal-aligned, every header its APA markdown (`Predictor`
+  or `Path`, `*Mdn*`, `95% CrI`, `*pd*`, `% in ROPE`, `*BF*~10~`, `*p*`,
+  `*R̂*`, `ESS~bulk~`, `ESS~tail~`), and the options of `apa_inline()`
+  (`stats`, `interval`, `ci_label`, `digits`, `digits_prob`,
+  `leading_zero`, `bf`, `bf_direction`). R-hat and ESS are opt-in on a
+  parameters table; `group_rows = TRUE` adds a `Component` column for
+  `apa_flextable(row_title_column = )`. No header is a column name apa7
+  would re-format, so the numeric `CI_low`/`CI_high` path of apa7 0.1.3,
+  which aborts, is never reached. `apa_note()` returns the table note —
+  the abbreviations the table shows, the interval's kind, the ROPE
+  range, a count of divergent transitions, never a verdict — for the
+  apaquarto chunk option `#| apa-note: !expr apa_note(tab)`, with the
+  table made in an earlier chunk. Hypotheses, comparison, fit-index,
+  contrast and correlation tables are refused by name for now.
+  `apa_table()` shares its name with `papaja::apa_table()`: whichever
+  package is attached last masks the other.
+
 * feat: `apa_tidy()` reports a `BayesFactor` object (`ttestBF()`,
   `anovaBF()`, `regressionBF()`, `correlationBF()`,
   `contingencyTableBF()`, …) as a `bf_models` table read from the
