@@ -370,19 +370,6 @@ test_that("a diagnostics row prints R-hat and both ESS", {
   )
 })
 
-# ---- types not yet built -------------------------------------------------
-
-test_that("a table kind the layer does not build yet is refused by name", {
-  loo <- apabayes_tidy(
-    data.frame(model = c("a", "b"), elpd_diff = c(0, -1.2)),
-    type = "loo", centrality = NA_character_
-  )
-  expect_error(
-    apa_inline(loo),
-    'does not yet report a table of type "loo"'
-  )
-})
-
 # ---- object handling -----------------------------------------------------
 
 test_that("a stored table gives the same string after a round trip", {

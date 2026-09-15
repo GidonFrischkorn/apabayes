@@ -184,7 +184,7 @@ test_that("the methods are registered on papaja's generic, and only those", {
   registered <- as.character(utils::methods(papaja::apa_print))
   ours <- paste0("apa_print.", c(
     "brmsfit", "stanreg", "lavaan", "blavaan", "brmshypothesis",
-    "apabayes_tidy"
+    "apabayes_tidy", "compare.loo", "bayesfactor_models"
   ))
   expect_true(all(ours %in% registered))
   s3 <- get(".__S3MethodsTable__.", envir = asNamespace("papaja"))

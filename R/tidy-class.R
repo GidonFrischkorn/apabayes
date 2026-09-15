@@ -58,11 +58,17 @@ tidy_contracts <- function() {
         bgammahat_high = "dbl"
       )
     ),
+    # `group` and `rope_pct` joined with the emmGrid route (session 22):
+    # a contrast computed within `by` groups repeats its name across
+    # them, so the inline layer needs `group` to address one, and
+    # `model_parameters(emmGrid)` returns the ROPE share (measured, which
+    # decision 22 had assumed it did not).
     contrasts = list(
       required = c("contrast", "estimate"),
       columns = c(
-        contrast = "chr", estimate = "dbl", ci_low = "dbl",
-        ci_high = "dbl", ci_method = "chr", ci_level = "dbl", pd = "dbl"
+        contrast = "chr", group = "chr", estimate = "dbl", ci_low = "dbl",
+        ci_high = "dbl", ci_method = "chr", ci_level = "dbl", pd = "dbl",
+        rope_pct = "dbl"
       )
     )
   )
@@ -224,9 +230,11 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #'
 #' The other contracts are `"diagnostics"` (`term`, `rhat`, `ess_bulk`,
 #' `ess_tail`), `"hypotheses"`, `"loo"`, `"bf_models"`, `"sem_fit"` and
-#' `"contrasts"`; the print method lists the columns of each, and every
-#' extract method documents the ones it fills. Columns beyond the
-#' contract are kept, after the contract columns.
+#' `"contrasts"` (`contrast`, `group` for the `by` variable's value,
+#' `estimate`, the interval columns, `pd`, `rope_pct`); the print method
+#' lists the columns of each, and every extract method documents the
+#' ones it fills. Columns beyond the contract are kept, after the
+#' contract columns.
 #'
 #' @section Metadata:
 #' `type`, `centrality`, `ci_method`, `ci_level`, `source_class` and

@@ -51,13 +51,18 @@ check_inline_string <- function(value, arg, call = rlang::caller_env()) {
   invisible(value)
 }
 
-# The column(s) a bare `term` is matched against, per table kind. The
-# comparison and contrast kinds get their entries with their slices.
+# The column(s) a bare `term` is matched against, per table kind. A
+# Bayes-factor model is found by bayestestR's `Model`, then by the name
+# it was passed as; a contrast by its string, which is emmeans's label
+# of the row on a means grid.
 inline_id_columns <- function(type) {
   switch(type,
     parameters = c("term", "label"),
     hypotheses = "hypothesis",
     sem_fit = "model",
+    loo = "model",
+    bf_models = c("model", "name"),
+    contrasts = "contrast",
     "term"
   )
 }

@@ -246,6 +246,20 @@ test_that("every type constructs from its required columns", {
     )
   )
   expect_identical(attr(loo, "type"), "loo")
+
+  contrasts <- apabayes_tidy(
+    data.frame(contrast = "a - b", estimate = 0.4),
+    type = "contrasts"
+  )
+  expect_identical(
+    names(contrasts),
+    c(
+      "contrast", "group", "estimate", "ci_low", "ci_high", "ci_method",
+      "ci_level", "pd", "rope_pct"
+    )
+  )
+  expect_identical(contrasts$group, NA_character_)
+  expect_identical(contrasts$rope_pct, NA_real_)
 })
 
 test_that("print writes the two header lines and returns invisibly", {

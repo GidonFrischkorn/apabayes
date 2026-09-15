@@ -1,5 +1,5 @@
 # The comparison routes (ARCHITECTURE.md § File organization):
-# `brmshypothesis` here, `compare.loo` and `bayesfactor_models` to come.
+# `brmshypothesis`, `compare.loo` and `bayesfactor_models`.
 #
 # The brmshypothesis route is the first that calls no easystats function.
 # Measured 2026-09-08 (dev/specs/spec-apa_tidy_brmshypothesis.md, probes
@@ -307,4 +307,352 @@ hypothesis_centrality <- function(hyp, samples) {
   } else {
     NA_character_
   }
+}
+
+# ---- compare.loo ---------------------------------------------------------
+
+# Measured 2026-09-14 (local/specs/spec-apa_tidy_compare_loo.md, probes
+# `probe_loo*.R`): loo >= 2.10.0 returns a data frame with a `model`
+# column, loo 2.9.0 a double matrix with the models as row names; rows
+# are sorted best first in both. Neither carries a weight, so weights are
+# an argument.
+
+#' @describeIn apa_tidy The output of [loo::loo_compare()], of either
+#'   shape: the data frame loo 2.10.0 and later return, or the matrix of
+#'   earlier versions. One row per model, best first, with loo's own
+#'   numbers: the ELPD difference to the best model and its standard
+#'   error, the model's ELPD, `p_loo` and LOOIC. No loo function is
+#'   called; `loo` must be installed to record its version. apabayes
+#'   never turns an ELPD difference into a Bayes factor or a weight into
+#'   evidence (ARCHITECTURE decision 17).
+#'
+#' @param weights `NULL`, or model weights to report in the `weight`
+#'   column: the result of [loo::loo_model_weights()] (its kind,
+#'   `"stacking"`, `"pseudo-BMA+"` or `"pseudo-BMA"`, becomes the
+#'   `weight_method` attribute), or a numeric vector named by model. The
+#'   weights are matched to rows by model name, never by position, and
+#'   must name exactly the models of `x`. The comparison object carries
+#'   no weights; `performance::compare_performance()`'s `LOOIC_wt` is the
+#'   stacking weight.
+#' @method apa_tidy compare.loo
+#' @export
+apa_tidy.compare.loo <- function(x, weights = NULL, ...) {
+  rlang::check_dots_empty()
+  rlang::check_installed(
+    "loo",
+    reason = "to record the version that produced these numbers."
+  )
+  cmp <- compare_loo_frame(x)
+  w <- compare_loo_weights(weights, cmp$model)
+  n <- nrow(cmp)
+  extra <- function(name, na) {
+    if (name %in% names(cmp)) cmp[[name]] else rep(na, n)
+  }
+  out <- data.frame(
+    model = cmp$model,
+    elpd_diff = cmp$elpd_diff,
+    se_diff = cmp$se_diff,
+    elpd = cmp$elpd_loo,
+    se_elpd = cmp$se_elpd_loo,
+    p_loo = cmp$p_loo,
+    looic = cmp$looic,
+    weight = w$weight,
+    se_p_loo = extra("se_p_loo", NA_real_),
+    se_looic = extra("se_looic", NA_real_),
+    # loo 2.10.0 added these three; on the matrix shape they were never
+    # computed, which is NA and not "no flag" ("").
+    p_worse = extra("p_worse", NA_real_),
+    diag_diff = extra("diag_diff", NA_character_),
+    diag_elpd = extra("diag_elpd", NA_character_),
+    stringsAsFactors = FALSE
+  )
+  apabayes_tidy(
+    out,
+    type = "loo",
+    centrality = NA_character_,
+    ci_method = NA_character_,
+    ci_level = NA_real_,
+    source_class = class(x),
+    package_versions = package_versions_of(c("loo", "apabayes")),
+    reference = out$model[1],
+    weight_method = w$method
+  )
+}
+
+# The LOO columns every row needs; `model` is checked apart because the
+# matrix shape keeps it in the row names.
+compare_loo_columns <- function() {
+  c("elpd_diff", "se_diff", "elpd_loo", "se_elpd_loo", "p_loo", "looic")
+}
+
+# Either shape as a plain data frame with a `model` column, checked.
+compare_loo_frame <- function(x, call = rlang::caller_env()) {
+  if (is.matrix(x)) {
+    m <- unclass(x)
+    if (is.null(rownames(m))) {
+      cli::cli_abort(
+        "{.arg x} is a matrix-shaped {.cls compare.loo} without row names,
+         which is where loo versions before 2.10.0 keep the model names.",
+        call = call
+      )
+    }
+    frame <- as.data.frame(m, stringsAsFactors = FALSE)
+    frame$model <- rownames(m)
+    rownames(frame) <- NULL
+  } else if (is.data.frame(x)) {
+    frame <- x
+    class(frame) <- "data.frame"
+  } else {
+    cli::cli_abort(
+      "{.arg x} must be a {.cls compare.loo} data frame or matrix, not
+       {.obj_type_friendly {x}}.",
+      call = call
+    )
+  }
+  check_compare_loo_columns(frame, call)
+  if (nrow(frame) == 0) {
+    cli::cli_abort("{.arg x} has no models to report.", call = call)
+  }
+  # nolint next: object_usage_linter. Used in the cli string below.
+  dup <- unique(frame$model[duplicated(frame$model)])
+  if (length(dup) > 0) {
+    cli::cli_abort(
+      c(
+        "{.arg x} names the model{?s} {.val {dup}} more than once.",
+        i = "Rows are addressed and weights matched by model name; name
+             the elements of the list given to {.fn loo::loo_compare}."
+      ),
+      call = call
+    )
+  }
+  frame
+}
+
+check_compare_loo_columns <- function(frame, call = rlang::caller_env()) {
+  missing <- setdiff(compare_loo_columns(), names(frame))
+  if (length(missing) > 0) {
+    # A WAIC or k-fold comparison is also a `compare.loo`, with the
+    # criterion in its column names (measured: `elpd_waic`, `waic`).
+    other <- setdiff(
+      grep("^elpd_", names(frame), value = TRUE),
+      c("elpd_diff", "elpd_loo")
+    )
+    if (length(other) > 0) {
+      # nolint next: object_usage_linter. Used in the cli string below.
+      criterion <- toupper(sub("^elpd_", "", other[1]))
+      cli::cli_abort(
+        c(
+          "{.arg x} is a {criterion} comparison; the {.val loo} table
+           reports LOO comparisons only.",
+          i = "Compare the models with {.fn loo::loo} objects."
+        ),
+        call = call
+      )
+    }
+    cli::cli_abort(
+      "{.arg x} has no {.field {missing}} column{?s}.",
+      call = call
+    )
+  }
+  if (!"model" %in% names(frame)) {
+    cli::cli_abort(
+      "{.arg x} has no {.field model} column naming the models.",
+      call = call
+    )
+  }
+  invisible(frame)
+}
+
+# The `weight` column and the `weight_method` attribute.
+compare_loo_weights <- function(weights, models, call = rlang::caller_env()) {
+  if (is.null(weights)) {
+    return(list(weight = rep(NA_real_, length(models)), method = NA_character_))
+  }
+  if (!is.numeric(weights)) {
+    cli::cli_abort(
+      "{.arg weights} must be a {.fn loo::loo_model_weights} result or a
+       numeric vector named by model, not {.obj_type_friendly {weights}}.",
+      call = call
+    )
+  }
+  nms <- names(weights)
+  if (is.null(nms) || any(is.na(nms) | !nzchar(nms))) {
+    cli::cli_abort(
+      c(
+        "{.arg weights} must be named by model.",
+        i = "Weights are matched to models by name, never by position."
+      ),
+      call = call
+    )
+  }
+  # nolint next: object_usage_linter. Used in the cli string below.
+  dup <- unique(nms[duplicated(nms)])
+  if (length(dup) > 0) {
+    cli::cli_abort(
+      "{.arg weights} names {.val {dup}} more than once.",
+      call = call
+    )
+  }
+  no_weight <- setdiff(models, nms)
+  no_model <- setdiff(nms, models)
+  if (length(no_weight) > 0 || length(no_model) > 0) {
+    cli::cli_abort(
+      c(
+        "The names of {.arg weights} must be the models of {.arg x}.",
+        i = if (length(no_weight) > 0) "No weight for {.val {no_weight}}.",
+        i = if (length(no_model) > 0) "No model called {.val {no_model}}."
+      ),
+      call = call
+    )
+  }
+  values <- as.numeric(weights)
+  if (anyNA(values)) {
+    cli::cli_abort(
+      "{.arg weights} must not contain missing values.",
+      call = call
+    )
+  }
+  check_range01(values, arg = "weights", call = call)
+  # nolint next: object_usage_linter. Used in the cli string below.
+  total <- sum(values)
+  if (abs(total - 1) > 1e-6) {
+    cli::cli_abort(
+      c(
+        "{.arg weights} must sum to 1, not {.val {total}}.",
+        i = "Pass the {.fn loo::loo_model_weights} result itself rather
+             than rounded values."
+      ),
+      call = call
+    )
+  }
+  list(
+    weight = values[match(models, nms)],
+    method = loo_weight_method(weights)
+  )
+}
+
+# The kind of weight, from the class `loo_model_weights()` gives it
+# (measured). A plain numeric vector says nothing about how it was made.
+loo_weight_method <- function(weights) {
+  kinds <- c(
+    stacking_weights = "stacking",
+    pseudobma_bb_weights = "pseudo-BMA+",
+    pseudobma_weights = "pseudo-BMA"
+  )
+  hit <- intersect(class(weights), names(kinds))
+  if (length(hit) == 0) NA_character_ else unname(kinds[hit[1]])
+}
+
+# ---- bayesfactor_models --------------------------------------------------
+
+# Measured 2026-09-14 (local/specs/spec-apa_tidy_bayesfactor_models.md,
+# probes `probe_bf_models*.R`): `Model` and `log_BF` columns, the
+# denominator as a row index attribute, and `[` keeping that index
+# unchanged. bayestestR offers no posterior model probability for the
+# class, so the route computes it at equal prior odds from `log_BF`.
+
+#' @describeIn apa_tidy The output of [bayestestR::bayesfactor_models()].
+#'   `bf` is `exp(log_BF)`, kept next to `log_bf` because the exponential
+#'   overflows above a log Bayes factor of about 709; `denominator` marks
+#'   the row every Bayes factor is taken against; `method` is how they
+#'   were computed (bridge sampling, the BIC approximation, BayesFactor's
+#'   JZS). `post_prob` is the posterior probability of each model under
+#'   **equal prior odds**, the assumption the `prior_odds` attribute
+#'   records. `model` is the model as bayestestR names it (the formula's
+#'   right-hand side for most classes) and the extra column `name` the
+#'   argument it was passed as.
+#' @method apa_tidy bayesfactor_models
+#' @export
+apa_tidy.bayesfactor_models <- function(x, ...) {
+  rlang::check_dots_empty()
+  check_bayesfactor_models(x)
+  log_bf <- as.double(x$log_BF)
+  denominator <- attr(x, "denominator", exact = TRUE)
+  method <- attr(x, "BF_method", exact = TRUE)
+  out <- data.frame(
+    model = as.character(x$Model),
+    bf = exp(log_bf),
+    log_bf = log_bf,
+    denominator = seq_along(log_bf) == denominator,
+    method = method,
+    post_prob = posterior_model_probs(log_bf),
+    name = rownames(x),
+    stringsAsFactors = FALSE
+  )
+  apabayes_tidy(
+    out,
+    type = "bf_models",
+    centrality = NA_character_,
+    ci_method = NA_character_,
+    ci_level = NA_real_,
+    source_class = class(x),
+    package_versions = package_versions_of(c("bayestestR", "apabayes")),
+    bf_method = method,
+    prior_odds = "equal",
+    denominator_model = out$model[denominator]
+  )
+}
+
+check_bayesfactor_models <- function(x, call = rlang::caller_env()) {
+  missing <- setdiff(c("Model", "log_BF"), names(x))
+  if (length(missing) > 0) {
+    cli::cli_abort(
+      "{.arg x} has no {.field {missing}} column{?s}.",
+      call = call
+    )
+  }
+  if (!is.numeric(x$log_BF)) {
+    cli::cli_abort(
+      "Column {.field log_BF} of {.arg x} must be numeric, not
+       {.cls {class(x$log_BF)}}.",
+      call = call
+    )
+  }
+  if (nrow(x) == 0) {
+    cli::cli_abort("{.arg x} has no models to report.", call = call)
+  }
+  if (!rlang::is_string(attr(x, "BF_method", exact = TRUE))) {
+    cli::cli_abort(
+      "{.arg x} has no {.field BF_method} attribute saying how its Bayes
+       factors were computed.",
+      call = call
+    )
+  }
+  d <- attr(x, "denominator", exact = TRUE)
+  ok <- is.numeric(d) && length(d) == 1 && !is.na(d) && d == round(d)
+  if (!ok) {
+    cli::cli_abort(
+      "{.arg x} has no usable {.field denominator} attribute (the row
+       index of the model every Bayes factor is taken against).",
+      call = call
+    )
+  }
+  # `[` keeps the attribute as it was (measured), so a subset or a
+  # reordered object points at the wrong row or past the last one. The
+  # denominator's own log Bayes factor is 0 by construction.
+  if (d < 1 || d > nrow(x) || !identical(as.double(x$log_BF[d]), 0)) {
+    cli::cli_abort(
+      c(
+        "The {.field denominator} of {.arg x} (row {d}) is not a row with a
+         log Bayes factor of 0; the object looks subset or edited.",
+        i = "Re-run {.fn bayestestR::bayesfactor_models}, or use
+             {.code update(x, reference = )} on the whole object."
+      ),
+      call = call
+    )
+  }
+  invisible(x)
+}
+
+# Posterior model probabilities at equal prior odds,
+# exp(log_bf - logsumexp(log_bf)): the same numbers as the naive
+# exp(log_bf) / sum(exp(log_bf)) and finite where that overflows
+# (measured). An unknown or infinite log Bayes factor leaves every
+# probability unknown; -Inf is a probability of 0.
+posterior_model_probs <- function(log_bf) {
+  if (anyNA(log_bf) || any(log_bf == Inf)) {
+    return(rep(NA_real_, length(log_bf)))
+  }
+  top <- max(log_bf)
+  exp(log_bf - (top + log(sum(exp(log_bf - top)))))
 }

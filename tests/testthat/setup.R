@@ -60,7 +60,11 @@ test_brms_fit <- function(name = c("full", "reduced", "mixed")) {
 # need no compilation and take 0.1 s and 0.5 s (measured), but stay
 # off CRAN with the brms fits for the same reason: a fit made on the
 # test machine, never a checked-in one (decision 1).
-test_stanreg_fit <- function(name = c("full", "mixed")) {
+#
+# "factor" (mpg ~ wt + cyl_f) was added in session 22 for the emmGrid
+# route: a live Bayesian grid needs a factor to contrast, and the brms
+# probe pair has none (its `am` is numeric, contrasted at 0 and 1).
+test_stanreg_fit <- function(name = c("full", "mixed", "factor")) {
   name <- match.arg(name)
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("rstanarm")
@@ -78,10 +82,153 @@ test_stanreg_fit <- function(name = c("full", "mixed")) {
     mixed = rstanarm::stan_glmer(
       mpg ~ wt + (1 | cyl_f),
       data = data, chains = 2, iter = 1000, seed = 1, refresh = 0
+    ),
+    factor = rstanarm::stan_glm(
+      mpg ~ wt + cyl_f,
+      data = data, chains = 2, iter = 1000, seed = 1, refresh = 0
     )
   )
   .apabayes_fit_cache[[key]] <- fit
   fit
+}
+
+# The comparison routes (spec-apa_tidy_compare_loo.md,
+# spec-apa_tidy_bayesfactor_models.md).
+#
+# A pointwise log-likelihood matrix (draws x observations) for a normal
+# model whose mean draws sit at `shift`, evaluated at fixed data. It needs
+# no Stan, so the LOO tests run on CRAN; the fixture builder
+# local/data-raw/fixture-compare-loo-matrix.R copies it verbatim to make
+# the matrix-shaped fixture from the same numbers (the two shapes agree
+# to 1.8e-15, measured).
+simulated_log_lik <- function(shift, sd, n = 40, draws = 400) {
+  y <- stats::qnorm(stats::ppoints(n))
+  mu <- stats::rnorm(draws, shift, 0.1)
+  outer(mu, y, function(m, yy) stats::dnorm(yy, m, sd, log = TRUE))
+}
+
+# Three `psis_loo` objects, named good / shifted / wide, whose comparison
+# orders them in that order.
+test_loo_list <- function() {
+  testthat::skip_if_not_installed("loo")
+  if (!is.null(.apabayes_fit_cache$loo_list)) {
+    return(.apabayes_fit_cache$loo_list)
+  }
+  ll <- withr::with_seed(1, list(
+    good = simulated_log_lik(0, 1),
+    shifted = simulated_log_lik(0.3, 1),
+    wide = simulated_log_lik(0, 1.6)
+  ))
+  out <- lapply(ll, function(m) loo::loo(m, r_eff = rep(1, ncol(m))))
+  .apabayes_fit_cache$loo_list <- out
+  out
+}
+
+# Three lm fits compared by the BIC approximation: deterministic, no
+# Stan, and bayestestR is in Imports, so it runs everywhere. The
+# intercept-only model is the denominator (row 3); row names are the
+# deparsed arguments m1, m0, m00 (measured).
+test_bf_models_lm <- function() {
+  m1 <- stats::lm(mpg ~ wt + am, data = mtcars)
+  m0 <- stats::lm(mpg ~ wt, data = mtcars)
+  m00 <- stats::lm(mpg ~ 1, data = mtcars)
+  bayestestR::bayesfactor_models(m1, m0, m00, denominator = m00)
+}
+
+# The brms probe pair through bridge sampling. Stochastic (measured: a
+# different seed moves log_BF in the third decimal), so it is computed
+# once per run under a fixed RNG state and every expectation reads this
+# object.
+test_bf_models_brms <- function() {
+  full <- test_brms_fit("full")
+  reduced <- test_brms_fit("reduced")
+  if (!is.null(.apabayes_fit_cache$bf_models_brms)) {
+    return(.apabayes_fit_cache$bf_models_brms)
+  }
+  out <- withr::with_seed(1, suppressMessages(suppressWarnings(
+    bayestestR::bayesfactor_models(full, reduced)
+  )))
+  .apabayes_fit_cache$bf_models_brms <- out
+  out
+}
+
+# The emmeans grids of the emmGrid route (spec-apa_tidy_emmGrid.md).
+# `emmeans::qdrg(mcmc = )` builds a Bayesian reference grid from a matrix
+# of coefficient draws (measured: 2 ms, and its HPD interval and median
+# are bit-identical to those of a grid from a brms or rstanarm fit), so
+# the route's tests run on CRAN without Stan. The draws are simulated
+# under `withr::with_seed()` around an lm fit's coefficients and
+# covariance; they stand for a posterior only in shape, which is all a
+# shape fixture needs. `.wgt.` weights come from the data as they would
+# from a fit.
+#
+# `name` is:
+#   "pairs"        pairwise contrasts of cyl_f (mpg ~ wt + cyl_f)
+#   "means"        the marginal means of cyl_f, one primary variable
+#                  with numeric-looking levels
+#   "at"           the means of wt at 2.5 and 3.5: a numeric primary
+#                  variable
+#   "custom"       one named custom contrast (a list method)
+#   "by"           pairwise contrasts of cyl_f within am_f, from the
+#                  model with the cyl_f by am_f interaction
+#   "means_two"    the means of cyl_f * am_f: two primary variables
+#   "two_by"       pairwise contrasts of cyl_f within am_f and wt, from
+#                  the model with wt and the interaction
+#   "list"         emmeans(g, pairwise ~ cyl_f), an emm_list
+#   "frequentist"  pairwise contrasts from the lm itself (no draws)
+test_emm_grid <- function(name = "pairs") {
+  grids <- c(
+    "pairs", "means", "at", "custom", "by", "means_two", "two_by", "list",
+    "frequentist"
+  )
+  name <- match.arg(name, grids)
+  testthat::skip_if_not_installed("emmeans")
+  key <- paste0("emm_", name)
+  if (!is.null(.apabayes_fit_cache[[key]])) {
+    return(.apabayes_fit_cache[[key]])
+  }
+  data <- mtcars
+  data$cyl_f <- factor(data$cyl)
+  data$am_f <- factor(data$am, labels = c("auto", "manual"))
+  formula <- switch(name,
+    by = ,
+    means_two = mpg ~ cyl_f * am_f,
+    two_by = mpg ~ wt + cyl_f * am_f,
+    mpg ~ wt + cyl_f
+  )
+  lm_fit <- stats::lm(formula, data = data)
+  if (name == "frequentist") {
+    grid <- emmeans::contrast(emmeans::emmeans(lm_fit, ~cyl_f), "pairwise")
+  } else {
+    beta <- stats::coef(lm_fit)
+    draws <- withr::with_seed(1, {
+      z <- matrix(stats::rnorm(400 * length(beta)), 400)
+      sweep(z %*% chol(stats::vcov(lm_fit)), 2, beta, "+")
+    })
+    colnames(draws) <- names(beta)
+    # `at` must reach `qdrg()`: `emmeans()` on a grid it built ignores
+    # it (measured).
+    at <- if (name %in% c("at", "two_by")) list(wt = c(2.5, 3.5))
+    g <- emmeans::qdrg(formula[-2], data = data, mcmc = draws, at = at)
+    grid <- switch(name,
+      pairs = emmeans::contrast(emmeans::emmeans(g, ~cyl_f), "pairwise"),
+      means = emmeans::emmeans(g, ~cyl_f),
+      at = emmeans::emmeans(g, ~wt),
+      custom = emmeans::contrast(
+        emmeans::emmeans(g, ~cyl_f),
+        list(`4 vs rest` = c(1, -0.5, -0.5))
+      ),
+      by = emmeans::contrast(emmeans::emmeans(g, ~ cyl_f | am_f), "pairwise"),
+      means_two = emmeans::emmeans(g, ~ cyl_f * am_f),
+      two_by = emmeans::contrast(
+        emmeans::emmeans(g, ~ cyl_f | am_f * wt),
+        "pairwise"
+      ),
+      list = emmeans::emmeans(g, pairwise ~ cyl_f)
+    )
+  }
+  .apabayes_fit_cache[[key]] <- grid
+  grid
 }
 
 # The lavaan fits of the lavaan route (spec-apa_tidy_lavaan.md). Unlike

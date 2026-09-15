@@ -52,8 +52,8 @@ apa_inline(x, ...)
 \item{...}{Tidy method: must be empty. Default method: passed to
 \code{\link[=apa_tidy]{apa_tidy()}}.}
 
-\item{term}{The row: a term, a label, a hypothesis string, or the
-left-hand side of a structural-equation path. \code{NULL} for all rows.}
+\item{term}{The row: a term, a label, a hypothesis string, a model,
+or the left-hand side of a structural-equation path. \code{NULL} for all rows.}
 
 \item{rhs}{The right-hand side of a structural-equation path.}
 
@@ -71,7 +71,11 @@ subset of what the row can print: \code{"pd"}, \code{"rope"}, \code{"bf"}, \code
 for a parameters row (the default prints every one the row
 carries); \code{"bf"}, \code{"er"}, \code{"post_prob"} for a hypotheses row (the
 default prints the Bayes factor alone); the index names above for a
-sem_fit row. \code{character()} prints the estimate alone.}
+sem_fit row; \code{"elpd_diff"}, \code{"elpd"}, \code{"p_loo"}, \code{"looic"},
+\code{"weight"} for a loo row (default \code{"elpd_diff"}); \code{"bf"},
+\code{"log_bf"}, \code{"post_prob"} for a bf_models row (default \code{"bf"});
+\code{"pd"}, \code{"rope"} for a contrasts row (the default prints both when
+the row carries them). \code{character()} prints the estimate alone.}
 
 \item{interval}{\code{FALSE} drops the interval.}
 
@@ -145,6 +149,33 @@ selects among \code{"chisq"} (with its \emph{p}), \code{"cfi"}, \code{"tli"},
 default method extracts with \code{\link[=apa_tidy]{apa_tidy()}}, which is the parameter
 table, so fit indices are reported from \code{apa_tidy_sem_fit(fit)}.
 
+A \code{loo} row from a \code{\link[loo:loo_compare]{loo::loo_compare()}} table prints the difference
+in expected log predictive density to the best model with its
+standard error, \verb{ΔELPD = −0.97, *SE* = 0.35}, on every row, the best
+model's \code{0.00} included; \code{stats} adds \code{"elpd"} (the model's own ELPD
+and SE), \code{"p_loo"}, \code{"looic"} and \code{"weight"} (\verb{*w*}, when the table
+was extracted with \verb{weights =}; which kind of weight it is lives in
+the table's \code{weight_method} attribute, not in the string). A
+\code{bf_models} row prints its Bayes factor against the table's
+denominator model, \verb{*BF*~10~ = 6.38} (the denominator itself prints
+\code{1.00}); \code{stats} adds \code{"log_bf"} and \code{"post_prob"}, the posterior
+model probability under equal prior odds, \verb{*P*(M | D)}. A Bayes
+factor too large or too small to exponentiate (a log Bayes factor
+beyond about ±709) prints as its log instead, never as \verb{∞} or \code{0}.
+Such a row is addressed by \code{model}, and a Bayes-factor row also by
+the \code{name} it was passed as. LOO and Bayes-factor comparisons answer
+different questions and are never merged into one string.
+
+A \code{contrasts} row from an emmeans grid prints like a parameters row:
+the estimate, its interval labelled from the row's \code{ci_method}
+(\verb{95\% HPD [1.38, 7.01]} on the emmGrid route's default, \code{CrI} under
+\code{ci = "eti"}), then \verb{*pd*} and the ROPE share when the table carries
+one. No symbol is printed unless \code{symbol} gives one: a contrast has
+no coefficient rule to apply. A row is addressed by its \code{contrast}
+string (\code{"cyl_f4 - cyl_f6"}, or emmeans's label of a marginal mean,
+\code{"cyl_f4"}); a contrast computed within \code{by} groups repeats its
+string across them and is addressed with \code{group}.
+
 Every number goes through the format layer
 (\code{\link[=apa_num]{apa_num()}}, \code{\link[=apa_ci]{apa_ci()}}, \code{\link[=apa_pd]{apa_pd()}}, \code{\link[=apa_bf]{apa_bf()}}, \code{\link[=apa_p]{apa_p()}}), and
 nothing printed judges the result.
@@ -156,7 +187,8 @@ On a fitted model or any other object \code{\link[=apa_tidy]{apa_tidy()}} accept
 default method calls \code{apa_tidy(x, ...)} and reports the result, so
 \code{...} takes that route's arguments: \code{standardize = TRUE} on a lavaan
 or blavaan fit, \code{effects = "all"} on a brms fit, \code{ci = "hdi"} on any
-posterior. Storing the tidy table and reporting from it is the same
+posterior, \code{ci = "eti"} or \verb{rope =} on an emmeans grid. Storing the
+tidy table and reporting from it is the same
 thing in two steps, and lets a document be knitted without the
 packages that made the fit.
 }

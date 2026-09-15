@@ -1,5 +1,58 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` reports an emmeans grid from a Bayesian fit — the
+  contrasts of `emmeans::contrast()` or `pairs()`, or the marginal means
+  of `emmeans::emmeans()` — as a `contrasts` table: the contrast string
+  (on a means grid, the row label as emmeans writes it, `cyl_f4`,
+  `cyl_f4 auto`), the posterior median or mean, the interval, pd and on
+  request the ROPE share, all from `parameters::model_parameters()`.
+  `ci = "hpd"`, the default, is the highest-density interval
+  `summary(emmGrid)` prints, reproduced bit for bit and labelled `HPD`;
+  `ci = "eti"` gives the equal-tailed one. A `by` variable's values fill
+  the contract's new `group` column and its name the `by` attribute;
+  the contract also gained `rope_pct`. Every grid variable is kept as an
+  extra column. A grid without posterior draws (a frequentist fit) and
+  an `emm_list` (`emmeans(fit, pairwise ~ f)`, two tables of different
+  kinds) are refused with a message. `emmeans` joins Suggests.
+* feat: `apa_inline()` reports a `contrasts` row like a parameters row,
+  `4.28, 95% HPD [1.38, 7.01], *pd* = .998`, with the ROPE share when
+  the table carries one and no symbol unless `symbol` gives one. A row
+  is addressed by its contrast string, and by `group` when the contrast
+  repeats across `by` groups. papaja's own `apa_print.emmGrid()` is left
+  alone; a Bayesian grid is reported through `apa_print(apa_tidy(grid))`.
+
+* feat: `apa_tidy()` reports a LOO model comparison from
+  `loo::loo_compare()` as a `loo` table: per model the ELPD difference to
+  the best model and its SE, the model's ELPD and SE, `p_loo`, LOOIC and
+  loo's own `p_worse` and diagnostic flags. Both shapes are read: the data
+  frame loo 2.10.0 and later return and the matrix of earlier versions,
+  which keeps the models in its row names. The comparison carries no
+  weights, so `weights =` takes a `loo::loo_model_weights()` result (its
+  kind, stacking, pseudo-BMA+ or pseudo-BMA, goes into the
+  `weight_method` attribute) or a numeric vector named by model, matched
+  by name. `loo` joins Suggests.
+* feat: `apa_tidy()` reports a Bayes-factor model comparison from
+  `bayestestR::bayesfactor_models()` as a `bf_models` table: `bf`, the
+  natural-log `log_bf` next to it, the denominator row, the method
+  (bridge sampling, the BIC approximation, BayesFactor's JZS) and
+  `post_prob`, the posterior model probability under equal prior odds,
+  computed by log-sum-exp so that it stays finite where `exp()`
+  overflows. `model` is the model as bayestestR names it; the new column
+  `name` is the argument it was passed as. An object whose denominator
+  index no longer points at its denominator row (bayestestR keeps the
+  index through `[`) is refused. Before this method such an object fell
+  through to the draws route and came back as a meaningless parameters
+  table.
+* feat: `apa_inline()` reports both tables. A `loo` row prints `ΔELPD =
+  −0.97, *SE* = 0.35` (the best model's `0.00` included), with `elpd`,
+  `p_loo`, `looic` and `weight` on request; a `bf_models` row prints
+  `*BF*~10~ = 6.38` against the denominator model, with `log_bf` and
+  `post_prob` (`*P*(M | D)`) on request. A Bayes factor beyond what
+  `exp()` can represent prints as its log, never as `∞` or `0`. Rows are
+  addressed by `model`, and a Bayes-factor row also by `name`.
+* feat: `papaja::apa_print()` works on `compare.loo` and
+  `bayesfactor_models` objects, named by model.
+
 * feat: `papaja::apa_print()` works on `brmsfit`, `stanreg`, `lavaan`,
   `blavaan` and `brmshypothesis` objects and on stored `apabayes_tidy`
   tables (Milestone 3, third slice). The methods are registered when

@@ -55,6 +55,22 @@
 #' q <- stats::qnorm(stats::ppoints(400))
 #' draws <- data.frame(b_wt = -5 + q, b_am = 0.2 + 2 * q)
 #' apa_tidy(brms::hypothesis(draws, c("b_wt < 0", "b_am = 0")))
+#' @examplesIf rlang::is_installed("emmeans")
+#'
+#' # An emmeans grid from a Bayesian fit carries the coefficient draws;
+#' # `emmeans::qdrg()` builds one from a draws matrix directly, which is
+#' # what a brms or rstanarm fit would supply. The interval is emmeans's
+#' # own HPD interval; `ci = "eti"` asks for the equal-tailed one.
+#' q <- stats::qnorm(stats::ppoints(400))
+#' coefs <- cbind(
+#'   `(Intercept)` = 26.7 + q, cyl_f6 = -6.9 + 1.5 * q,
+#'   cyl_f8 = -11.6 + 1.3 * q
+#' )
+#' cars <- transform(mtcars, cyl_f = factor(cyl))
+#' grid <- emmeans::qdrg(~cyl_f, data = cars, mcmc = coefs)
+#' means <- emmeans::emmeans(grid, ~cyl_f)
+#' apa_tidy(means)
+#' apa_tidy(emmeans::contrast(means, "pairwise"), rope = c(-1, 1))
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")

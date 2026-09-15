@@ -9,7 +9,10 @@ inline_strings <- function(x, opts) {
     parameters = inline_parameters(x, opts),
     hypotheses = inline_hypotheses(x, opts),
     diagnostics = inline_diagnostics(x, opts),
-    sem_fit = inline_sem_fit(x, opts)
+    sem_fit = inline_sem_fit(x, opts),
+    loo = inline_loo(x, opts),
+    bf_models = inline_bf_models(x, opts),
+    contrasts = inline_contrasts(x, opts)
   )
 }
 
@@ -308,4 +311,121 @@ sem_index_part <- function(name, estimate, fmt, low = NA, high = NA,
     level = level, label = label, digits = fmt$index_digits,
     leading_zero = fmt$index_zero, markup = m
   ))
+}
+
+# ---- loo -----------------------------------------------------------------
+
+# `ΔELPD = −0.97, *SE* = 0.35` and the opt-in parts after it. Every row
+# prints the same way, the reference row's zero difference included
+# (Gidon, 2026-09-14). The numbers are unbounded, so "auto" keeps the
+# leading zero; the weight is a proportion and goes through apa_prob().
+inline_loo <- function(x, opts) {
+  m <- opts$markup
+  lz <- if (identical(opts$leading_zero, "auto")) TRUE else opts$leading_zero
+  num <- function(v) apa_num(v, opts$digits, lz, markup = m)
+  se <- markup("SE", m, italic = TRUE)
+  # A value with its standard error; an unknown SE drops that part alone.
+  with_se <- function(name, value, se_value) {
+    out <- stat_string(name, num(value))
+    has_se <- !is.na(out) & !is.na(se_value)
+    out[has_se] <- paste0(
+      out[has_se], ", ", stat_string(se, num(se_value[has_se]))
+    )
+    out
+  }
+  s <- opts$stats
+  parts <- list(
+    elpd_diff = if ("elpd_diff" %in% s) {
+      with_se(paste0(symbol("delta", m), "ELPD"), x$elpd_diff, x$se_diff)
+    },
+    elpd = if ("elpd" %in% s) with_se("ELPD", x$elpd, x$se_elpd),
+    p_loo = if ("p_loo" %in% s) {
+      stat_string(
+        markup("p", m, italic = TRUE, subscript = "loo"), num(x$p_loo)
+      )
+    },
+    looic = if ("looic" %in% s) stat_string("LOOIC", num(x$looic)),
+    weight = if ("weight" %in% s) {
+      stat_string(
+        markup("w", m, italic = TRUE),
+        apa_prob(x$weight, opts$digits_prob, markup = m)
+      )
+    }
+  )
+  data.frame(
+    estimate = rep(NA_character_, nrow(x)),
+    statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# ---- contrasts -----------------------------------------------------------
+
+# `4.28, 95% HPD [1.38, 7.01], *pd* = .998`: a parameters row without the
+# coefficient rule. A contrast has no `component`, so no symbol is
+# invented for it; `symbol =` prints one. The interval label comes from
+# the row's `ci_method` as everywhere (`HPD` on the emmGrid route's
+# default), and the ROPE share prints when the table carries one.
+inline_contrasts <- function(x, opts) {
+  m <- opts$markup
+  sym <- if (rlang::is_string(opts$symbol)) {
+    rep(opts$symbol, nrow(x))
+  } else {
+    rep(NA_character_, nrow(x))
+  }
+  lz <- resolve_leading_zero(x, opts$leading_zero)
+  s <- opts$stats
+  parts <- list(
+    pd = if ("pd" %in% s) {
+      apa_pd(x$pd, opts$digits_prob, markup = m, symbol = TRUE)
+    },
+    rope = if ("rope" %in% s) rope_string(x$rope_pct, m)
+  )
+  data.frame(
+    estimate = inline_estimates(x, sym, lz, opts),
+    statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# ---- bf_models -----------------------------------------------------------
+
+# `*BF*~10~ = 6.38`: the row's model over the denominator, a number and
+# never a word (decision 15). `bf` is exp(log_bf), which overflows to Inf
+# above ~709 and underflows to 0 below ~-745; a Bayes factor printed as
+# `∞` or `0.00` would misreport a finite one, so such a row prints its
+# log instead, once.
+inline_bf_models <- function(x, opts) {
+  m <- opts$markup
+  lz <- if (identical(opts$leading_zero, "auto")) TRUE else opts$leading_zero
+  direction <- opts$bf_direction
+  bf_name <- markup("BF", m, italic = TRUE, subscript = direction)
+  log_bf <- if (direction == "01") -x$log_bf else x$log_bf
+  log_part <- stat_string(
+    paste0("log(", bf_name, ")"),
+    apa_num(log_bf, opts$digits, lz, markup = m)
+  )
+  lost <- !is.na(x$bf) & (is.infinite(x$bf) | x$bf == 0) &
+    is.finite(x$log_bf)
+  s <- opts$stats
+  bf_part <- apa_bf(x$bf, direction, opts$bf, markup = m, symbol = TRUE)
+  bf_part[lost] <- log_part[lost]
+  if ("bf" %in% s) {
+    log_part[lost] <- NA_character_
+  }
+  parts <- list(
+    bf = if ("bf" %in% s) bf_part,
+    log_bf = if ("log_bf" %in% s) log_part,
+    post_prob = if ("post_prob" %in% s) {
+      stat_string(
+        paste0(markup("P", m, italic = TRUE), "(M | D)"),
+        apa_prob(x$post_prob, opts$digits_prob, markup = m)
+      )
+    }
+  )
+  data.frame(
+    estimate = rep(NA_character_, nrow(x)),
+    statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
 }

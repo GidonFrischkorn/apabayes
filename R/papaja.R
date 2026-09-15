@@ -10,7 +10,10 @@
 #'
 #' When papaja is installed, `papaja::apa_print()` works on the objects
 #' apabayes reports: a brms fit, an rstanarm fit, a lavaan or blavaan
-#' fit, a brms hypothesis test, and a stored [apabayes_tidy] table. Each
+#' fit, a brms hypothesis test, a LOO comparison from
+#' [loo::loo_compare()], a Bayes-factor model comparison from
+#' [bayestestR::bayesfactor_models()], and a stored [apabayes_tidy]
+#' table. Each
 #' method calls [apa_inline()] and returns its result in the shape papaja
 #' users address, so `apa_print(fit)$full_result$wt` works as it does on
 #' an `lm`.
@@ -22,9 +25,9 @@
 #' character that is not a letter, digit or underscore becomes `_`, so
 #' `(Intercept)` is `Intercept` and `visual =~ x1` is `visual_x1`. A
 #' parameter is named by its label, a hypothesis by its string, a fit
-#' table by its model. A name that would repeat an earlier one gets
-#' `_2`, `_3`, …, skipping any name another row has; a row with no
-#' usable name is `row` and its position.
+#' table and a model comparison by its model. A name that would repeat
+#' an earlier one gets `_2`, `_3`, …, skipping any name another row has;
+#' a row with no usable name is `row` and its position.
 #' With `term`, the three elements are plain strings and the result is
 #' exactly `apa_inline(x, term, ...)`.
 #'
@@ -32,15 +35,24 @@
 #' the LaTeX math papaja writes, and print with a `knit_print` method, so
 #' inline code needs no `$full_result` for a single result.
 #'
-#' @param x A `brmsfit`, `stanreg`, `lavaan`, `blavaan` or
-#'   `brmshypothesis` object, or an [apabayes_tidy] table.
+#' papaja owns `apa_print()` methods for `emmGrid` and `BFBayesFactor`
+#' objects, and apabayes never replaces them. papaja's `emmGrid` method
+#' reports a frequentist grid; on a grid from a Bayesian fit it prints
+#' the estimate alone. Report such a grid through its tidy table,
+#' `apa_print(apa_tidy(grid))`, which names the rows as papaja does
+#' (`$full_result$cyl_f4_cyl_f6`).
+#'
+#' @param x A `brmsfit`, `stanreg`, `lavaan`, `blavaan`,
+#'   `brmshypothesis`, `compare.loo` or `bayesfactor_models` object, or an
+#'   [apabayes_tidy] table.
 #' @param term The row to report, as in [apa_inline()]; `NULL` reports
 #'   every row as named lists.
 #' @param ... Passed to [apa_inline()]: `rhs`, `op`, `group` and the
 #'   formatting options, and on a fitted model the arguments of its
 #'   [apa_tidy()] route.
 #' @param in_paren `TRUE` writes brackets for the parentheses in the
-#'   strings (`χ²[24]`), for a result quoted inside parentheses, as
+#'   strings (`χ²[24]`, `log[*BF*~10~]`), for a result quoted inside
+#'   parentheses, as
 #'   papaja's argument of that name does.
 #'
 #' @return An [apa_results] object.
@@ -88,6 +100,19 @@ apa_print.blavaan <- function(x, term = NULL, ..., in_paren = FALSE) {
 #' @rdname apabayes-papaja
 #' @exportS3Method papaja::apa_print
 apa_print.brmshypothesis <- function(x, term = NULL, ..., in_paren = FALSE) {
+  apa_print_apabayes(x, term, ..., in_paren = in_paren)
+}
+
+#' @rdname apabayes-papaja
+#' @exportS3Method papaja::apa_print compare.loo
+apa_print.compare.loo <- function(x, term = NULL, ..., in_paren = FALSE) {
+  apa_print_apabayes(x, term, ..., in_paren = in_paren)
+}
+
+#' @rdname apabayes-papaja
+#' @exportS3Method papaja::apa_print bayesfactor_models
+apa_print.bayesfactor_models <- function(x, term = NULL, ...,
+                                         in_paren = FALSE) {
   apa_print_apabayes(x, term, ..., in_paren = in_paren)
 }
 

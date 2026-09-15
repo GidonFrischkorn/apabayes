@@ -8,6 +8,8 @@
 \alias{apa_print.lavaan}
 \alias{apa_print.blavaan}
 \alias{apa_print.brmshypothesis}
+\alias{apa_print.compare.loo}
+\alias{apa_print.bayesfactor_models}
 \title{Results for papaja's \code{apa_print()}}
 \usage{
 \method{apa_print}{apabayes_tidy}(x, term = NULL, ..., in_paren = FALSE)
@@ -21,10 +23,15 @@
 \method{apa_print}{blavaan}(x, term = NULL, ..., in_paren = FALSE)
 
 \method{apa_print}{brmshypothesis}(x, term = NULL, ..., in_paren = FALSE)
+
+apa_print.compare.loo(x, term = NULL, ..., in_paren = FALSE)
+
+apa_print.bayesfactor_models(x, term = NULL, ..., in_paren = FALSE)
 }
 \arguments{
-\item{x}{A \code{brmsfit}, \code{stanreg}, \code{lavaan}, \code{blavaan} or
-\code{brmshypothesis} object, or an \link{apabayes_tidy} table.}
+\item{x}{A \code{brmsfit}, \code{stanreg}, \code{lavaan}, \code{blavaan},
+\code{brmshypothesis}, \code{compare.loo} or \code{bayesfactor_models} object, or an
+\link{apabayes_tidy} table.}
 
 \item{term}{The row to report, as in \code{\link[=apa_inline]{apa_inline()}}; \code{NULL} reports
 every row as named lists.}
@@ -34,7 +41,8 @@ formatting options, and on a fitted model the arguments of its
 \code{\link[=apa_tidy]{apa_tidy()}} route.}
 
 \item{in_paren}{\code{TRUE} writes brackets for the parentheses in the
-strings (\verb{χ²[24]}), for a result quoted inside parentheses, as
+strings (\verb{χ²[24]}, \verb{log[*BF*~10~]}), for a result quoted inside
+parentheses, as
 papaja's argument of that name does.}
 }
 \value{
@@ -43,7 +51,10 @@ An \link{apa_results} object.
 \description{
 When papaja is installed, \code{papaja::apa_print()} works on the objects
 apabayes reports: a brms fit, an rstanarm fit, a lavaan or blavaan
-fit, a brms hypothesis test, and a stored \link{apabayes_tidy} table. Each
+fit, a brms hypothesis test, a LOO comparison from
+\code{\link[loo:loo_compare]{loo::loo_compare()}}, a Bayes-factor model comparison from
+\code{\link[bayestestR:bayesfactor_models]{bayestestR::bayesfactor_models()}}, and a stored \link{apabayes_tidy}
+table. Each
 method calls \code{\link[=apa_inline]{apa_inline()}} and returns its result in the shape papaja
 users address, so \code{apa_print(fit)$full_result$wt} works as it does on
 an \code{lm}.
@@ -56,15 +67,22 @@ parentheses, backticks and commas are removed and every other
 character that is not a letter, digit or underscore becomes \verb{_}, so
 \code{(Intercept)} is \code{Intercept} and \code{visual =~ x1} is \code{visual_x1}. A
 parameter is named by its label, a hypothesis by its string, a fit
-table by its model. A name that would repeat an earlier one gets
-\verb{_2}, \verb{_3}, …, skipping any name another row has; a row with no
-usable name is \code{row} and its position.
+table and a model comparison by its model. A name that would repeat
+an earlier one gets \verb{_2}, \verb{_3}, …, skipping any name another row has;
+a row with no usable name is \code{row} and its position.
 With \code{term}, the three elements are plain strings and the result is
 exactly \code{apa_inline(x, term, ...)}.
 
 The strings use apabayes' markup (see \code{\link[=apa_inline]{apa_inline()}}'s \code{markup}), not
 the LaTeX math papaja writes, and print with a \code{knit_print} method, so
 inline code needs no \verb{$full_result} for a single result.
+
+papaja owns \code{apa_print()} methods for \code{emmGrid} and \code{BFBayesFactor}
+objects, and apabayes never replaces them. papaja's \code{emmGrid} method
+reports a frequentist grid; on a grid from a Bayesian fit it prints
+the estimate alone. Report such a grid through its tidy table,
+\code{apa_print(apa_tidy(grid))}, which names the rows as papaja does
+(\verb{$full_result$cyl_f4_cyl_f6}).
 }
 
 \examples{
