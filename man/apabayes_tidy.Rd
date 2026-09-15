@@ -11,7 +11,7 @@ apabayes_tidy(
   x,
   ...,
   type = c("parameters", "diagnostics", "hypotheses", "loo", "bf_models", "sem_fit",
-    "contrasts"),
+    "contrasts", "correlations"),
   centrality = c("median", "mean"),
   ci_method = "eti",
   ci_level = 0.95,
@@ -32,7 +32,7 @@ is_apabayes_tidy(x)
 
 \item{type}{Which column contract applies: one of \code{"parameters"},
 \code{"diagnostics"}, \code{"hypotheses"}, \code{"loo"}, \code{"bf_models"},
-\code{"sem_fit"}, \code{"contrasts"}.}
+\code{"sem_fit"}, \code{"contrasts"}, \code{"correlations"}.}
 
 \item{centrality}{\code{"median"} or \code{"mean"}; what \code{estimate} holds. \code{NA}
 when the estimate is not a posterior summary (a lavaan
@@ -106,7 +106,10 @@ model puts a parameter in.}
 The other contracts are \code{"diagnostics"} (\code{term}, \code{rhat}, \code{ess_bulk},
 \code{ess_tail}), \code{"hypotheses"}, \code{"loo"}, \code{"bf_models"}, \code{"sem_fit"} and
 \code{"contrasts"} (\code{contrast}, \code{group} for the \code{by} variable's value,
-\code{estimate}, the interval columns, \code{pd}, \code{rope_pct}); the print method
+\code{estimate}, the interval columns, \code{pd}, \code{rope_pct}) and
+\code{"correlations"} (\code{term} as \code{var1~~var2}, \code{var1}, \code{var2}, \code{group},
+\code{estimate}, the interval columns, \code{pd}, \code{rope_pct}, \code{bf}, and \code{n}, the
+pairwise number of observations); the print method
 lists the columns of each, and every extract method documents the
 ones it fills. Columns beyond the contract are kept, after the
 contract columns.

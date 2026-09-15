@@ -14,7 +14,8 @@
 #' [loo::loo_compare()], a Bayes-factor model comparison from
 #' [bayestestR::bayesfactor_models()], a table of contrasts or marginal
 #' means from [modelbased::estimate_contrasts()] or
-#' [modelbased::estimate_means()], and a stored [apabayes_tidy] table.
+#' [modelbased::estimate_means()], a table of Bayesian correlations from
+#' [correlation::correlation()], and a stored [apabayes_tidy] table.
 #' Each
 #' method calls [apa_inline()] and returns its result in the shape papaja
 #' users address, so `apa_print(fit)$full_result$wt` works as it does on
@@ -27,7 +28,8 @@
 #' character that is not a letter, digit or underscore becomes `_`, so
 #' `(Intercept)` is `Intercept` and `visual =~ x1` is `visual_x1`. A
 #' parameter is named by its label, a hypothesis by its string, a fit
-#' table and a model comparison by its model. A name that would repeat
+#' table and a model comparison by its model, a correlation by its pair
+#' (`mpg~~wt` is `mpg_wt`). A name that would repeat
 #' an earlier one gets `_2`, `_3`, …, skipping any name another row has;
 #' a row with no usable name is `row` and its position.
 #' With `term`, the three elements are plain strings and the result is
@@ -46,8 +48,8 @@
 #'
 #' @param x A `brmsfit`, `stanreg`, `lavaan`, `blavaan`,
 #'   `brmshypothesis`, `compare.loo`, `bayesfactor_models`,
-#'   `estimate_contrasts` or `estimate_means` object, or an
-#'   [apabayes_tidy] table.
+#'   `estimate_contrasts`, `estimate_means` or `easycorrelation` object,
+#'   or an [apabayes_tidy] table.
 #' @param term The row to report, as in [apa_inline()]; `NULL` reports
 #'   every row as named lists.
 #' @param ... Passed to [apa_inline()]: `rhs`, `op`, `group` and the
@@ -129,6 +131,12 @@ apa_print.estimate_contrasts <- function(x, term = NULL, ...,
 #' @rdname apabayes-papaja
 #' @exportS3Method papaja::apa_print estimate_means
 apa_print.estimate_means <- function(x, term = NULL, ..., in_paren = FALSE) {
+  apa_print_apabayes(x, term, ..., in_paren = in_paren)
+}
+
+#' @rdname apabayes-papaja
+#' @exportS3Method papaja::apa_print easycorrelation
+apa_print.easycorrelation <- function(x, term = NULL, ..., in_paren = FALSE) {
   apa_print_apabayes(x, term, ..., in_paren = in_paren)
 }
 

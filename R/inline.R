@@ -76,6 +76,15 @@
 #' `"cyl_f4"`); a contrast computed within `by` groups repeats its
 #' string across them and is addressed with `group`.
 #'
+#' A `correlations` row prints
+#' `*r* = −.82, 95% HDI [−.92, −.66], *pd* > .999, *BF*~10~ = 1.3 × 10^7^`:
+#' the correlation without its leading
+#' zero, then pd and the Bayes factor; `stats` adds the ROPE share and
+#' `"n"`, `*n* = 32`. A row is addressed by its pair, `apa_inline(x,
+#' "mpg", "wt")`, in either order, or by its term `"mpg~~wt"`; a single
+#' variable finds the row it appears in when there is one. A correlation
+#' computed within groups is addressed with `group`.
+#'
 #' Every number goes through the format layer
 #' ([apa_num()], [apa_ci()], [apa_pd()], [apa_bf()], [apa_p()]), and
 #' nothing printed judges the result.
@@ -92,15 +101,19 @@
 #'
 #' @param x An [apabayes_tidy] table, or an object [apa_tidy()] accepts.
 #' @param term The row: a term, a label, a hypothesis string, a model,
-#'   or the left-hand side of a structural-equation path. `NULL` for all rows.
-#' @param rhs The right-hand side of a structural-equation path.
+#'   the left-hand side of a structural-equation path, or one variable of
+#'   a correlation. `NULL` for all rows.
+#' @param rhs The right-hand side of a structural-equation path, or the
+#'   other variable of a correlation.
 #' @param op The operator of a structural-equation path as lavaan writes
-#'   it: `"=~"`, `"~~"`, `"~"`, `"~1"` or `":="`. `NULL` matches any.
+#'   it: `"=~"`, `"~~"`, `"~"`, `"~1"` or `":="`. `NULL` matches any; a
+#'   correlation's is `"~~"`.
 #' @param group A value of the `group` column to restrict the search to.
 #' @param ... Tidy method: must be empty. Default method: passed to
 #'   [apa_tidy()].
-#' @param symbol `NULL` for the default per row, a string printed in
-#'   italics before the estimate (`"b"`, `"β"`, `"r"`), or `FALSE`
+#' @param symbol `NULL` for the default per row (`b` for a regression
+#'   coefficient, `r` for a correlation, none elsewhere), a string printed
+#'   in italics before the estimate (`"b"`, `"β"`, `"r"`), or `FALSE`
 #'   for none.
 #' @param stats `NULL` for the default, or a character vector naming a
 #'   subset of what the row can print: `"pd"`, `"rope"`, `"bf"`, `"p"`
@@ -111,7 +124,9 @@
 #'   `"weight"` for a loo row (default `"elpd_diff"`); `"bf"`,
 #'   `"log_bf"`, `"post_prob"` for a bf_models row (default `"bf"`);
 #'   `"pd"`, `"rope"` for a contrasts row (the default prints both when
-#'   the row carries them). `character()` prints the estimate alone.
+#'   the row carries them); `"pd"`, `"rope"`, `"bf"`, `"n"` for a
+#'   correlations row (default `c("pd", "bf")`). `character()` prints the
+#'   estimate alone.
 #' @param interval `FALSE` drops the interval.
 #' @param ci_label `"auto"` labels the interval from the row's
 #'   `ci_method`; a string overrides it; `NULL` keeps the brackets and
@@ -122,8 +137,8 @@
 #'   and on a sem_fit row 3 for the indices and 2 for χ².
 #' @param digits_prob Decimals for pd, p and the ROPE share.
 #' @param leading_zero `"auto"` drops the leading zero on standardized
-#'   rows and on fit indices and keeps it elsewhere; `TRUE` or `FALSE`
-#'   force one rule.
+#'   rows, correlations and fit indices and keeps it elsewhere; `TRUE` or
+#'   `FALSE` force one rule.
 #' @param bf,bf_direction Passed to [apa_bf()] as `style` and
 #'   `direction`.
 #' @inheritParams apa_num
@@ -207,7 +222,7 @@ apa_inline.default <- function(x, term = NULL, rhs = NULL, op = NULL,
 inline_types <- function() {
   c(
     "parameters", "hypotheses", "diagnostics", "sem_fit", "loo", "bf_models",
-    "contrasts"
+    "contrasts", "correlations"
   )
 }
 
@@ -222,18 +237,22 @@ inline_stats_vocabulary <- function(type) {
     loo = c("elpd_diff", "elpd", "p_loo", "looic", "weight"),
     bf_models = c("bf", "log_bf", "post_prob"),
     contrasts = c("pd", "rope"),
+    correlations = c("pd", "rope", "bf", "n"),
     character()
   )
 }
 
 # What `stats = NULL` prints: one statistic where the rest are opt-in
 # (the decisions of spec-apa_inline.md and spec-apa_inline-comparisons.md),
-# every statistic elsewhere.
+# every statistic elsewhere. A correlation prints pd and its Bayes factor;
+# its ROPE was fixed by correlation, not chosen, and its n is not part of
+# the usual string (spec-apa_tidy_correlation.md).
 inline_default_stats <- function(type) {
   switch(type,
     hypotheses = "bf",
     loo = "elpd_diff",
     bf_models = "bf",
+    correlations = c("pd", "bf"),
     inline_stats_vocabulary(type)
   )
 }

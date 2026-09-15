@@ -260,6 +260,27 @@ test_that("every type constructs from its required columns", {
   )
   expect_identical(contrasts$group, NA_character_)
   expect_identical(contrasts$rope_pct, NA_real_)
+
+  correlations <- apabayes_tidy(
+    data.frame(term = "a~~b", var1 = "a", var2 = "b", estimate = 0.4),
+    type = "correlations", ci_method = "hdi"
+  )
+  expect_identical(
+    names(correlations),
+    c(
+      "term", "var1", "var2", "group", "estimate", "ci_low", "ci_high",
+      "ci_method", "ci_level", "pd", "rope_pct", "bf", "n"
+    )
+  )
+  expect_identical(correlations$ci_method, "hdi")
+  expect_identical(correlations$n, NA_real_)
+  expect_error(
+    apabayes_tidy(
+      data.frame(term = "a~~b", estimate = 0.4),
+      type = "correlations"
+    ),
+    "var1"
+  )
 })
 
 test_that("print writes the two header lines and returns invisibly", {

@@ -12,6 +12,7 @@
 \alias{apa_print.bayesfactor_models}
 \alias{apa_print.estimate_contrasts}
 \alias{apa_print.estimate_means}
+\alias{apa_print.easycorrelation}
 \title{Results for papaja's \code{apa_print()}}
 \usage{
 \method{apa_print}{apabayes_tidy}(x, term = NULL, ..., in_paren = FALSE)
@@ -33,12 +34,14 @@ apa_print.bayesfactor_models(x, term = NULL, ..., in_paren = FALSE)
 apa_print.estimate_contrasts(x, term = NULL, ..., in_paren = FALSE)
 
 apa_print.estimate_means(x, term = NULL, ..., in_paren = FALSE)
+
+apa_print.easycorrelation(x, term = NULL, ..., in_paren = FALSE)
 }
 \arguments{
 \item{x}{A \code{brmsfit}, \code{stanreg}, \code{lavaan}, \code{blavaan},
 \code{brmshypothesis}, \code{compare.loo}, \code{bayesfactor_models},
-\code{estimate_contrasts} or \code{estimate_means} object, or an
-\link{apabayes_tidy} table.}
+\code{estimate_contrasts}, \code{estimate_means} or \code{easycorrelation} object,
+or an \link{apabayes_tidy} table.}
 
 \item{term}{The row to report, as in \code{\link[=apa_inline]{apa_inline()}}; \code{NULL} reports
 every row as named lists.}
@@ -62,7 +65,8 @@ fit, a brms hypothesis test, a LOO comparison from
 \code{\link[loo:loo_compare]{loo::loo_compare()}}, a Bayes-factor model comparison from
 \code{\link[bayestestR:bayesfactor_models]{bayestestR::bayesfactor_models()}}, a table of contrasts or marginal
 means from \code{\link[modelbased:estimate_contrasts]{modelbased::estimate_contrasts()}} or
-\code{\link[modelbased:estimate_means]{modelbased::estimate_means()}}, and a stored \link{apabayes_tidy} table.
+\code{\link[modelbased:estimate_means]{modelbased::estimate_means()}}, a table of Bayesian correlations from
+\code{\link[correlation:correlation]{correlation::correlation()}}, and a stored \link{apabayes_tidy} table.
 Each
 method calls \code{\link[=apa_inline]{apa_inline()}} and returns its result in the shape papaja
 users address, so \code{apa_print(fit)$full_result$wt} works as it does on
@@ -76,7 +80,8 @@ parentheses, backticks and commas are removed and every other
 character that is not a letter, digit or underscore becomes \verb{_}, so
 \code{(Intercept)} is \code{Intercept} and \code{visual =~ x1} is \code{visual_x1}. A
 parameter is named by its label, a hypothesis by its string, a fit
-table and a model comparison by its model. A name that would repeat
+table and a model comparison by its model, a correlation by its pair
+(\code{mpg~~wt} is \code{mpg_wt}). A name that would repeat
 an earlier one gets \verb{_2}, \verb{_3}, …, skipping any name another row has;
 a row with no usable name is \code{row} and its position.
 With \code{term}, the three elements are plain strings and the result is

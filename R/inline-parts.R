@@ -12,7 +12,8 @@ inline_strings <- function(x, opts) {
     sem_fit = inline_sem_fit(x, opts),
     loo = inline_loo(x, opts),
     bf_models = inline_bf_models(x, opts),
-    contrasts = inline_contrasts(x, opts)
+    contrasts = inline_contrasts(x, opts),
+    correlations = inline_correlations(x, opts)
   )
 }
 
@@ -384,6 +385,41 @@ inline_contrasts <- function(x, opts) {
   data.frame(
     estimate = inline_estimates(x, sym, lz, opts),
     statistic = join_columns(parts, nrow(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# ---- correlations --------------------------------------------------------
+
+# `*r* = −.82, 95% HDI [−.92, −.66], *pd* > .999, *BF*~10~ = 1.3 × 10^7^`.
+# A correlation is bounded, so "auto" drops the leading zero (decision 8,
+# the SDVWM seed's `fmt_r`) and `r` is the symbol unless `symbol` says
+# otherwise. `n` prints as `*n* = 32` on request.
+inline_correlations <- function(x, opts) {
+  m <- opts$markup
+  n <- nrow(x)
+  sym <- if (isFALSE(opts$symbol)) {
+    rep(NA_character_, n)
+  } else {
+    rep(opts$symbol %||% "r", n)
+  }
+  lz <- if (identical(opts$leading_zero, "auto")) FALSE else opts$leading_zero
+  s <- opts$stats
+  parts <- list(
+    pd = if ("pd" %in% s) {
+      apa_pd(x$pd, opts$digits_prob, markup = m, symbol = TRUE)
+    },
+    rope = if ("rope" %in% s) rope_string(x$rope_pct, m),
+    bf = if ("bf" %in% s) {
+      apa_bf(x$bf, opts$bf_direction, opts$bf, markup = m, symbol = TRUE)
+    },
+    n = if ("n" %in% s) {
+      stat_string(markup("n", m, italic = TRUE), apa_num(x$n, 0, markup = m))
+    }
+  )
+  data.frame(
+    estimate = inline_estimates(x, sym, rep(lz, n), opts),
+    statistic = join_columns(parts, n),
     stringsAsFactors = FALSE
   )
 }

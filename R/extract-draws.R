@@ -87,6 +87,21 @@
 #' means <- modelbased::estimate_means(fit, by = "cyl_f", ci_method = method)
 #' apa_tidy(means, ci = "hdi")
 #' }
+#' @examplesIf rlang::is_installed(c("correlation", "BayesFactor"))
+#'
+#' # Bayesian correlations. The table records neither its interval nor
+#' # its centrality, so `ci` and `centrality` name them; the defaults are
+#' # correlation's own.
+#' r <- correlation::correlation(
+#'   mtcars[, c("mpg", "wt", "hp")],
+#'   bayesian = TRUE
+#' )
+#' apa_tidy(r)
+#' r_eti <- correlation::correlation(
+#'   mtcars[, c("mpg", "wt")],
+#'   bayesian = TRUE, bayesian_ci_method = "eti"
+#' )
+#' apa_tidy(r_eti, ci = "eti")
 #' @export
 apa_tidy <- function(x, ...) {
   UseMethod("apa_tidy")

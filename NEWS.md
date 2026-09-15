@@ -1,5 +1,25 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_tidy()` reports Bayesian correlations from
+  `correlation::correlation()` or `correlation::cor_test()` (with
+  `bayesian = TRUE`) as a new `correlations` table: one row per pair,
+  named `mpg~~wt`, with `var1`, `var2`, the posterior estimate, its
+  interval, pd, the ROPE share, the Bayes factor and the pairwise `n`,
+  all read from the table, plus the method and prior columns. The table
+  records neither its interval nor its centrality, so `ci` (default
+  `"hdi"`) and `centrality` (default `"median"`) name them, matching
+  correlation's own defaults; apabayes cannot check them. correlation
+  records its `ci` argument without applying it (the bounds are always
+  95 %), so a table labelled with any other level is refused. Frequentist
+  tables and tables with diagonal rows (`redundant = TRUE`) are refused.
+  `apa_inline()` prints a row as
+  `*r* = −.82, 95% HDI [−.92, −.66], *pd* > .999, *BF*~10~ = 1.3 × 10^7^`,
+  without the leading zero; `stats` adds `"rope"` and `"n"`. A row is
+  addressed by its pair in either order (`apa_inline(x, "wt", "mpg")`),
+  by its term, or by one variable when only one row has it.
+  `papaja::apa_print()` works on the class. `correlation` and
+  `BayesFactor` join Suggests.
+
 * feat: `apa_tidy()` reports a table from `modelbased::estimate_contrasts()`
   or `modelbased::estimate_means()` on a Bayesian fit as a `contrasts`
   table, the contract the emmeans route fills. Rows are named as

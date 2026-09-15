@@ -4,7 +4,9 @@
 # `group` filters first; no `term` means every row; a `rhs` or `op`
 # reads the term as a structural-equation path (`~~` is symmetric, the
 # other operators are not); a bare `term` matches the term, then the
-# label, then the term without the brms class prefix.
+# label, then the term without the brms class prefix. A correlation is a
+# pair of variables: `term` + `rhs` matches it in either order, and a bare
+# `term` that is no `var1~~var2` string matches a variable on either side.
 
 select_inline_rows <- function(x, term, rhs, op, group,
                                call = rlang::caller_env()) {
@@ -63,6 +65,7 @@ inline_id_columns <- function(type) {
     loo = "model",
     bf_models = c("model", "name"),
     contrasts = "contrast",
+    correlations = "term",
     "term"
   )
 }
@@ -100,6 +103,9 @@ match_inline_id <- function(x, rows, term, type) {
       return(hit)
     }
   }
+  if (type == "correlations") {
+    return(rows[x$var1[rows] %in% term | x$var2[rows] %in% term])
+  }
   if ("term" %in% names(x)) {
     return(rows[x$term[rows] %in% paste0("b_", term)])
   }
@@ -111,6 +117,9 @@ match_inline_id <- function(x, rows, term, type) {
 # direction and its reverse is not a row.
 match_inline_path <- function(x, rows, term, rhs, op, type,
                               call = rlang::caller_env()) {
+  if (type == "correlations") {
+    return(match_inline_pair(x, rows, term, rhs, op))
+  }
   if (type != "parameters") {
     cli::cli_abort(
       "{.arg rhs} and {.arg op} address a structural-equation path, and
@@ -127,6 +136,21 @@ match_inline_path <- function(x, rows, term, rhs, op, type,
   direct <- parts$lhs %in% term & parts$rhs %in% rhs
   reverse <- parts$op %in% "~~" & parts$lhs %in% rhs & parts$rhs %in% term
   rows[op_ok & (direct | reverse)]
+}
+
+# A correlation, read from its `var1` and `var2` columns rather than split
+# out of the term, so that a variable name is never parsed. A correlation
+# is symmetric, and its only operator is `~~`.
+match_inline_pair <- function(x, rows, term, rhs, op) {
+  if (!is.null(op) && op != "~~") {
+    return(integer())
+  }
+  v1 <- x$var1[rows]
+  v2 <- x$var2[rows]
+  if (is.null(rhs)) {
+    return(rows[v1 %in% term | v2 %in% term])
+  }
+  rows[(v1 %in% term & v2 %in% rhs) | (v1 %in% rhs & v2 %in% term)]
 }
 
 # How a row is named in an error message: `term (label)` where the label

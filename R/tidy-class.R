@@ -70,6 +70,19 @@ tidy_contracts <- function() {
         ci_high = "dbl", ci_method = "chr", ci_level = "dbl", pd = "dbl",
         rope_pct = "dbl"
       )
+    ),
+    # Joined with the correlation route (session 24, decision 23): a pair
+    # is named by both variables, which the inline layer matches in
+    # either order, and `n` is the pairwise complete n, which differs
+    # between rows.
+    correlations = list(
+      required = c("term", "var1", "var2", "estimate"),
+      columns = c(
+        term = "chr", var1 = "chr", var2 = "chr", group = "chr",
+        estimate = "dbl", ci_low = "dbl", ci_high = "dbl",
+        ci_method = "chr", ci_level = "dbl", pd = "dbl", rope_pct = "dbl",
+        bf = "dbl", n = "dbl"
+      )
     )
   )
 }
@@ -231,7 +244,10 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' The other contracts are `"diagnostics"` (`term`, `rhat`, `ess_bulk`,
 #' `ess_tail`), `"hypotheses"`, `"loo"`, `"bf_models"`, `"sem_fit"` and
 #' `"contrasts"` (`contrast`, `group` for the `by` variable's value,
-#' `estimate`, the interval columns, `pd`, `rope_pct`); the print method
+#' `estimate`, the interval columns, `pd`, `rope_pct`) and
+#' `"correlations"` (`term` as `var1~~var2`, `var1`, `var2`, `group`,
+#' `estimate`, the interval columns, `pd`, `rope_pct`, `bf`, and `n`, the
+#' pairwise number of observations); the print method
 #' lists the columns of each, and every extract method documents the
 #' ones it fills. Columns beyond the contract are kept, after the
 #' contract columns.
@@ -254,7 +270,7 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' @param x A data frame with at least the required columns of `type`.
 #' @param type Which column contract applies: one of `"parameters"`,
 #'   `"diagnostics"`, `"hypotheses"`, `"loo"`, `"bf_models"`,
-#'   `"sem_fit"`, `"contrasts"`.
+#'   `"sem_fit"`, `"contrasts"`, `"correlations"`.
 #' @param centrality `"median"` or `"mean"`; what `estimate` holds. `NA`
 #'   when the estimate is not a posterior summary (a lavaan
 #'   maximum-likelihood estimate).
@@ -291,7 +307,7 @@ apabayes_tidy <- function(x,
                           type = c(
                             "parameters", "diagnostics",
                             "hypotheses", "loo", "bf_models",
-                            "sem_fit", "contrasts"
+                            "sem_fit", "contrasts", "correlations"
                           ),
                           centrality = c("median", "mean"),
                           ci_method = "eti",

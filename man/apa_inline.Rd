@@ -53,17 +53,21 @@ apa_inline(x, ...)
 \code{\link[=apa_tidy]{apa_tidy()}}.}
 
 \item{term}{The row: a term, a label, a hypothesis string, a model,
-or the left-hand side of a structural-equation path. \code{NULL} for all rows.}
+the left-hand side of a structural-equation path, or one variable of
+a correlation. \code{NULL} for all rows.}
 
-\item{rhs}{The right-hand side of a structural-equation path.}
+\item{rhs}{The right-hand side of a structural-equation path, or the
+other variable of a correlation.}
 
 \item{op}{The operator of a structural-equation path as lavaan writes
-it: \code{"=~"}, \code{"~~"}, \code{"~"}, \code{"~1"} or \code{":="}. \code{NULL} matches any.}
+it: \code{"=~"}, \code{"~~"}, \code{"~"}, \code{"~1"} or \code{":="}. \code{NULL} matches any; a
+correlation's is \code{"~~"}.}
 
 \item{group}{A value of the \code{group} column to restrict the search to.}
 
-\item{symbol}{\code{NULL} for the default per row, a string printed in
-italics before the estimate (\code{"b"}, \code{"β"}, \code{"r"}), or \code{FALSE}
+\item{symbol}{\code{NULL} for the default per row (\code{b} for a regression
+coefficient, \code{r} for a correlation, none elsewhere), a string printed
+in italics before the estimate (\code{"b"}, \code{"β"}, \code{"r"}), or \code{FALSE}
 for none.}
 
 \item{stats}{\code{NULL} for the default, or a character vector naming a
@@ -75,7 +79,9 @@ sem_fit row; \code{"elpd_diff"}, \code{"elpd"}, \code{"p_loo"}, \code{"looic"},
 \code{"weight"} for a loo row (default \code{"elpd_diff"}); \code{"bf"},
 \code{"log_bf"}, \code{"post_prob"} for a bf_models row (default \code{"bf"});
 \code{"pd"}, \code{"rope"} for a contrasts row (the default prints both when
-the row carries them). \code{character()} prints the estimate alone.}
+the row carries them); \code{"pd"}, \code{"rope"}, \code{"bf"}, \code{"n"} for a
+correlations row (default \code{c("pd", "bf")}). \code{character()} prints the
+estimate alone.}
 
 \item{interval}{\code{FALSE} drops the interval.}
 
@@ -91,8 +97,8 @@ and on a sem_fit row 3 for the indices and 2 for χ².}
 \item{digits_prob}{Decimals for pd, p and the ROPE share.}
 
 \item{leading_zero}{\code{"auto"} drops the leading zero on standardized
-rows and on fit indices and keeps it elsewhere; \code{TRUE} or \code{FALSE}
-force one rule.}
+rows, correlations and fit indices and keeps it elsewhere; \code{TRUE} or
+\code{FALSE} force one rule.}
 
 \item{bf, bf_direction}{Passed to \code{\link[=apa_bf]{apa_bf()}} as \code{style} and
 \code{direction}.}
@@ -175,6 +181,14 @@ no coefficient rule to apply. A row is addressed by its \code{contrast}
 string (\code{"cyl_f4 - cyl_f6"}, or emmeans's label of a marginal mean,
 \code{"cyl_f4"}); a contrast computed within \code{by} groups repeats its
 string across them and is addressed with \code{group}.
+
+A \code{correlations} row prints
+\verb{*r* = −.82, 95\% HDI [−.92, −.66], *pd* > .999, *BF*~10~ = 1.3 × 10^7^}:
+the correlation without its leading
+zero, then pd and the Bayes factor; \code{stats} adds the ROPE share and
+\code{"n"}, \verb{*n* = 32}. A row is addressed by its pair, \code{apa_inline(x, "mpg", "wt")}, in either order, or by its term \code{"mpg~~wt"}; a single
+variable finds the row it appears in when there is one. A correlation
+computed within groups is addressed with \code{group}.
 
 Every number goes through the format layer
 (\code{\link[=apa_num]{apa_num()}}, \code{\link[=apa_ci]{apa_ci()}}, \code{\link[=apa_pd]{apa_pd()}}, \code{\link[=apa_bf]{apa_bf()}}, \code{\link[=apa_p]{apa_p()}}), and
