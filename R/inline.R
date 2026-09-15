@@ -68,7 +68,7 @@
 #'
 #' A `contrasts` row from an emmeans grid prints like a parameters row:
 #' the estimate, its interval labelled from the row's `ci_method`
-#' (`95% HPD [1.38, 7.01]` on the emmGrid route's default, `CrI` under
+#' (`95% HDI [1.38, 7.01]` on the emmGrid route's default, `CrI` under
 #' `ci = "eti"`), then `*pd*` and the ROPE share when the table carries
 #' one. No symbol is printed unless `symbol` gives one: a contrast has
 #' no coefficient rule to apply. A row is addressed by its `contrast`

@@ -1,8 +1,9 @@
 # Tests for the emmGrid route (local/specs/spec-apa_tidy_emmGrid.md).
 #
 # No expected number is typed: every one is read from emmeans's own
-# `summary()` of the grid (its HPD interval and point estimate, which the
-# route must reproduce bit for bit) or from `model_parameters()` (pd,
+# `summary()` of the grid (its HPD interval, which the route reports as
+# the HDI, and its point estimate, which the route must reproduce bit for
+# bit) or from `model_parameters()` (pd,
 # the equal-tailed interval, the ROPE share). The grids are built by
 # `emmeans::qdrg()` from simulated draws (`test_emm_grid()`), so they run
 # on CRAN; the two live fits are off CRAN.
@@ -38,7 +39,7 @@ test_that("apa_tidy() on a contrast grid returns the contrasts contract", {
   expect_identical(out$estimate, unname(s$estimate))
   expect_identical(out$ci_low, unname(s$lower.HPD))
   expect_identical(out$ci_high, unname(s$upper.HPD))
-  expect_identical(out$ci_method, rep("hpd", 3))
+  expect_identical(out$ci_method, rep("hdi", 3))
   expect_identical(out$ci_level, rep(0.95, 3))
   expect_identical(out$pd, mp$pd)
   expect_identical(out$rope_pct, rep(NA_real_, 3))
@@ -48,7 +49,7 @@ test_that("the attributes name the interval, the grid kind and the packages", {
   g <- test_emm_grid("pairs")
   out <- apa_tidy(g)
   expect_identical(attr(out, "centrality"), "median")
-  expect_identical(attr(out, "ci_method"), "hpd")
+  expect_identical(attr(out, "ci_method"), "hdi")
   expect_identical(attr(out, "ci_level"), 0.95)
   expect_identical(attr(out, "source_class"), "emmGrid")
   expect_named(
@@ -259,7 +260,7 @@ test_that("a grid without a recorded kind reports NA for it", {
 
 test_that("the reporting arguments are checked", {
   g <- test_emm_grid("pairs")
-  expect_error(apa_tidy(g, ci = "hdi"), "hpd")
+  expect_error(apa_tidy(g, ci = "hpd"), "hdi")
   expect_error(apa_tidy(g, centrality = "map"), "median")
   expect_error(apa_tidy(g, ci_level = 1), "ci_level")
   expect_error(apa_tidy(g, rope = 1), "rope")

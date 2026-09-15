@@ -59,7 +59,7 @@
 \method{apa_tidy}{emmGrid}(
   x,
   centrality = c("median", "mean"),
-  ci = c("hpd", "eti"),
+  ci = c("hdi", "eti"),
   ci_level = 0.95,
   rope = NULL,
   rope_ci = 0.95,
@@ -268,9 +268,10 @@ argument it was passed as.
 contrast string or, on a grid of marginal means, the row's label as
 emmeans writes it (\code{cyl_f4}, \verb{cyl_f4 auto}), in the \code{contrast}
 column. The estimate, interval, pd and ROPE share come from
-\code{\link[parameters:model_parameters]{parameters::model_parameters()}}. \code{ci = "hpd"}, the default, is the
-highest-density interval \code{summary(emmGrid)} prints, and is labelled
-as such; \code{ci = "eti"} gives the equal-tailed interval. A \code{by}
+\code{\link[parameters:model_parameters]{parameters::model_parameters()}}. \code{ci = "hdi"}, the default, is the
+highest-density interval \code{summary(emmGrid)} prints (emmeans calls it
+HPD; the numbers are identical) and is labelled HDI; \code{ci = "eti"}
+gives the equal-tailed interval. A \code{by}
 variable's values go into the \code{group} column and its name into the
 \code{by} attribute; every grid variable is kept as an extra column. The
 grid is reported as it is: subset it with \code{[} first to report fewer
@@ -286,8 +287,11 @@ one kind. Pass \code{x$emmeans} or \code{x$contrasts}.
 \item \code{apa_tidy(default)}: Anything \code{\link[posterior:as_draws_df]{posterior::as_draws_df()}} accepts —
 \code{stanfit}, \code{CmdStanFit}, \code{mcmc}, \code{mcmc.list}, a draws matrix or a
 data frame of draws — is converted and handed to the \code{draws}
-method. The class of the object you passed is kept as the
-\code{source_class} attribute.
+method. A data frame, tibble (grouped or not) or data.table counts as
+draws only when its columns are all numeric; a summary table (one
+with a class of its own, or with a label column) is refused rather
+than read as draws. The class of the object you passed is kept as
+the \code{source_class} attribute.
 
 \item \code{apa_tidy(runjags)}: A \code{runjags} object keeps its chains in \verb{$mcmc};
 \code{posterior} has no method for the object itself.
@@ -386,8 +390,8 @@ apa_tidy(brms::hypothesis(draws, c("b_wt < 0", "b_am = 0")))
 
 # An emmeans grid from a Bayesian fit carries the coefficient draws;
 # `emmeans::qdrg()` builds one from a draws matrix directly, which is
-# what a brms or rstanarm fit would supply. The interval is emmeans's
-# own HPD interval; `ci = "eti"` asks for the equal-tailed one.
+# what a brms or rstanarm fit would supply. The interval is the HDI,
+# emmeans's own HPD interval; `ci = "eti"` asks for the equal-tailed one.
 q <- stats::qnorm(stats::ppoints(400))
 coefs <- cbind(
   `(Intercept)` = 26.7 + q, cyl_f6 = -6.9 + 1.5 * q,

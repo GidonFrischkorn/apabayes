@@ -276,6 +276,58 @@ test_that("bad input aborts with the class or the value named", {
   expect_error(apa_tidy(draws, ci = "quantile"), "ci")
 })
 
+test_that("a plain data frame of numeric draws is still read as draws", {
+  skip_if_no_draws()
+  df <- data.frame(mu = c(0.1, 0.4, -0.2, 0.3), sigma = c(1, 1.2, 0.9, 1.1))
+
+  expected <- apa_tidy(posterior::as_draws_df(df), diagnostics = FALSE)
+  out <- apa_tidy(df, diagnostics = FALSE)
+  expect_identical(out$estimate, expected$estimate)
+  expect_identical(attr(out, "source_class"), "data.frame")
+  tbl <- structure(df, class = c("tbl_df", "tbl", "data.frame"))
+  expect_identical(apa_tidy(tbl, diagnostics = FALSE)$ci_low, expected$ci_low)
+  # A data.table and a grouped tibble of draws convert as their plain data
+  # frame does (measured with data.table and dplyr, session 23); the
+  # class vectors are built here so the tests need neither package.
+  dt <- structure(df, class = c("data.table", "data.frame"))
+  expect_identical(apa_tidy(dt, diagnostics = FALSE)$ci_low, expected$ci_low)
+  grouped <- structure(
+    df,
+    class = c("grouped_df", "tbl_df", "tbl", "data.frame")
+  )
+  expect_identical(
+    apa_tidy(grouped, diagnostics = FALSE)$estimate,
+    expected$estimate
+  )
+})
+
+test_that("a data frame that is not draws is refused, not coerced", {
+  skip_if_no_draws()
+  # Measured (session 23): posterior::as_draws_df() accepts character,
+  # factor and logical columns and any table class, so a summary table
+  # became a nonsense parameters table with no error.
+  df <- data.frame(mu = c(0.1, 0.4), sigma = c(1, 1.2))
+
+  # A summary class with no route of its own (modelbased's classes have
+  # one since session 23).
+  summary_table <- structure(
+    df,
+    class = c(
+      "bayesfactor_inclusion", "see_bayesfactor_inclusion", "data.frame"
+    )
+  )
+  expect_error(apa_tidy(summary_table), "bayesfactor_inclusion")
+  expect_error(apa_tidy(summary_table), "not draws", fixed = TRUE)
+
+  labelled <- data.frame(mu = c(0.1, 0.4), term = c("a", "b"))
+  expect_error(apa_tidy(labelled), "term")
+  factored <- data.frame(mu = c(0.1, 0.4), g = factor(c("a", "b")))
+  expect_error(apa_tidy(factored), "g")
+  flagged <- data.frame(mu = c(0.1, 0.4), ok = c(TRUE, FALSE))
+  expect_error(apa_tidy(flagged), "ok")
+  expect_error(apa_tidy(flagged), "numeric", fixed = TRUE)
+})
+
 test_that("posterior is required, not assumed", {
   skip_if_no_draws()
   draws <- fixture("draws_brms")

@@ -1,21 +1,29 @@
 # apabayes 0.0.0.9000
 
+* fix: `apa_tidy()` no longer reads any data frame as draws. A plain data
+  frame, tibble or data.table of numeric columns still is; a data frame
+  with a class of its own (a modelbased or easystats table, a
+  `bayesfactor_models` object) or a column that is not numeric is
+  refused with a message naming the class or the columns, where
+  `posterior::as_draws_df()` had silently turned it into a nonsense
+  parameters table.
 * feat: `apa_tidy()` reports an emmeans grid from a Bayesian fit — the
   contrasts of `emmeans::contrast()` or `pairs()`, or the marginal means
   of `emmeans::emmeans()` — as a `contrasts` table: the contrast string
   (on a means grid, the row label as emmeans writes it, `cyl_f4`,
   `cyl_f4 auto`), the posterior median or mean, the interval, pd and on
   request the ROPE share, all from `parameters::model_parameters()`.
-  `ci = "hpd"`, the default, is the highest-density interval
-  `summary(emmGrid)` prints, reproduced bit for bit and labelled `HPD`;
-  `ci = "eti"` gives the equal-tailed one. A `by` variable's values fill
+  `ci = "hdi"`, the default, is the highest-density interval
+  `summary(emmGrid)` prints (emmeans's HPD), reproduced bit for bit and
+  labelled `HDI`, the same name as on every other route; `ci = "eti"`
+  gives the equal-tailed one. A `by` variable's values fill
   the contract's new `group` column and its name the `by` attribute;
   the contract also gained `rope_pct`. Every grid variable is kept as an
   extra column. A grid without posterior draws (a frequentist fit) and
   an `emm_list` (`emmeans(fit, pairwise ~ f)`, two tables of different
   kinds) are refused with a message. `emmeans` joins Suggests.
 * feat: `apa_inline()` reports a `contrasts` row like a parameters row,
-  `4.28, 95% HPD [1.38, 7.01], *pd* = .998`, with the ROPE share when
+  `4.28, 95% HDI [1.38, 7.01], *pd* = .998`, with the ROPE share when
   the table carries one and no symbol unless `symbol` gives one. A row
   is addressed by its contrast string, and by `group` when the contrast
   repeats across `by` groups. papaja's own `apa_print.emmGrid()` is left

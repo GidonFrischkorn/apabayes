@@ -8,15 +8,21 @@
 # equal-tailed one, and `ci_method = "hdi"` is bit-identical to the HPD
 # interval `summary(emmGrid)` prints; and emmeans's own test for a
 # Bayesian grid is whether `post.beta` holds draws.
+#
+# The interval is called `"hdi"` here as on every other route (Gidon,
+# session 23): emmeans's HPD and easystats's HDI are the same interval,
+# measured identical, and one argument value names it package-wide. The
+# default stays the interval emmeans prints (decision 9).
 
 #' @describeIn apa_tidy An `emmGrid` from [emmeans::emmeans()] or
 #'   [emmeans::contrast()] on a Bayesian fit: one row per grid row, the
 #'   contrast string or, on a grid of marginal means, the row's label as
 #'   emmeans writes it (`cyl_f4`, `cyl_f4 auto`), in the `contrast`
 #'   column. The estimate, interval, pd and ROPE share come from
-#'   [parameters::model_parameters()]. `ci = "hpd"`, the default, is the
-#'   highest-density interval `summary(emmGrid)` prints, and is labelled
-#'   as such; `ci = "eti"` gives the equal-tailed interval. A `by`
+#'   [parameters::model_parameters()]. `ci = "hdi"`, the default, is the
+#'   highest-density interval `summary(emmGrid)` prints (emmeans calls it
+#'   HPD; the numbers are identical) and is labelled HDI; `ci = "eti"`
+#'   gives the equal-tailed interval. A `by`
 #'   variable's values go into the `group` column and its name into the
 #'   `by` attribute; every grid variable is kept as an extra column. The
 #'   grid is reported as it is: subset it with `[` first to report fewer
@@ -27,7 +33,7 @@
 #' @export
 apa_tidy.emmGrid <- function(x,
                              centrality = c("median", "mean"),
-                             ci = c("hpd", "eti"),
+                             ci = c("hdi", "eti"),
                              ci_level = 0.95,
                              rope = NULL,
                              rope_ci = 0.95,
@@ -45,12 +51,7 @@ apa_tidy.emmGrid <- function(x,
   }
   check_emm_grid(x)
 
-  # The HPD interval is what emmeans computes and prints; easystats
-  # calls the same interval "hdi" (measured identical), and the contract
-  # keeps emmeans's name for it so the text says what the reader saw.
-  mp <- call_model_parameters(
-    x, centrality, if (ci == "hpd") "hdi" else ci, ci_level, rope, rope_ci
-  )
+  mp <- call_model_parameters(x, centrality, ci, ci_level, rope, rope_ci)
   grid <- x@grid
   row <- match_emm_rows(grid, mp)
   by <- x@misc$by.vars

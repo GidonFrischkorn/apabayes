@@ -59,8 +59,8 @@
 #'
 #' # An emmeans grid from a Bayesian fit carries the coefficient draws;
 #' # `emmeans::qdrg()` builds one from a draws matrix directly, which is
-#' # what a brms or rstanarm fit would supply. The interval is emmeans's
-#' # own HPD interval; `ci = "eti"` asks for the equal-tailed one.
+#' # what a brms or rstanarm fit would supply. The interval is the HDI,
+#' # emmeans's own HPD interval; `ci = "eti"` asks for the equal-tailed one.
 #' q <- stats::qnorm(stats::ppoints(400))
 #' coefs <- cbind(
 #'   `(Intercept)` = 26.7 + q, cyl_f6 = -6.9 + 1.5 * q,
@@ -81,14 +81,20 @@ apa_tidy <- function(x, ...) {
 #' @describeIn apa_tidy Anything [posterior::as_draws_df()] accepts —
 #'   `stanfit`, `CmdStanFit`, `mcmc`, `mcmc.list`, a draws matrix or a
 #'   data frame of draws — is converted and handed to the `draws`
-#'   method. The class of the object you passed is kept as the
-#'   `source_class` attribute.
+#'   method. A data frame, tibble (grouped or not) or data.table counts as
+#'   draws only when its columns are all numeric; a summary table (one
+#'   with a class of its own, or with a label column) is refused rather
+#'   than read as draws. The class of the object you passed is kept as
+#'   the `source_class` attribute.
 #' @export
 apa_tidy.default <- function(x, ...) {
   rlang::check_installed(
     "posterior",
     reason = paste0("to read draws from ", class(x)[1], " objects.")
   )
+  if (is.data.frame(x)) {
+    check_draws_data_frame(x)
+  }
   draws <- tryCatch(
     posterior::as_draws_df(x),
     error = function(cnd) {
@@ -107,6 +113,45 @@ apa_tidy.default <- function(x, ...) {
 #' @export
 apa_tidy.runjags <- function(x, ...) {
   with_source_class(apa_tidy(x$mcmc, ...), class(x))
+}
+
+# `posterior::as_draws_df()` accepts any data frame, character, factor and
+# logical columns included (measured, session 23), so a summary table
+# (a `bayesfactor_models` object, a modelbased or easystats table) came
+# out as a parameters table of nonsense with no error. A data frame is
+# read as draws only when it carries no class beyond a plain data frame,
+# a tibble (grouped or not) or a data.table, and every column is numeric
+# (Gidon, session 23; the grouped tibble and the data.table after review,
+# both measured to convert as their plain data frame does). A grouping
+# column stays a column, so a logical one is refused by the second test.
+# A `draws_df` never reaches the default method.
+check_draws_data_frame <- function(x, call = rlang::caller_env()) {
+  extra <- setdiff(
+    class(x),
+    c("grouped_df", "tbl_df", "tbl", "data.table", "data.frame")
+  )
+  if (length(extra) > 0) {
+    cli::cli_abort(
+      c(
+        "{.arg x} is a {.cls {class(x)}} table, not draws.",
+        i = "{.fn apa_tidy} reads a data frame, tibble or data.table as
+             draws only when every column is numeric."
+      ),
+      call = call
+    )
+  }
+  numeric <- vapply(x, is.numeric, logical(1))
+  if (!all(numeric)) {
+    cli::cli_abort(
+      c(
+        "{.arg x} is not draws: every column of a draws data frame must be
+         numeric.",
+        x = "Not numeric: {.field {names(x)[!numeric]}}."
+      ),
+      call = call
+    )
+  }
+  invisible(x)
 }
 
 with_source_class <- function(x, source_class) {

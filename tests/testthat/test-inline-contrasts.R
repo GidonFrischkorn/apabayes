@@ -13,7 +13,7 @@ contrast_table <- function(name = "pairs", ...) {
 }
 
 # The expected estimate part of one row.
-expected_estimate <- function(row, m, label = "HPD", digits = 2,
+expected_estimate <- function(row, m, label = "HDI", digits = 2,
                               leading_zero = TRUE) {
   paste0(
     apa_num(row$estimate, digits, leading_zero, markup = m), ", ",
@@ -47,7 +47,7 @@ test_that("a type without a builder is still refused by name", {
 
 # ---- strings -------------------------------------------------------------
 
-test_that("a contrast row prints its estimate, HPD interval and pd", {
+test_that("a contrast row prints its estimate, HDI and pd", {
   tab <- contrast_table()
   for (m in c("md", "latex", "plain")) {
     r <- apa_inline(tab, markup = m)
@@ -64,7 +64,7 @@ test_that("a contrast row prints its estimate, HPD interval and pd", {
   first <- apa_inline(tab, "cyl_f4 - cyl_f6", markup = "md")$full_result
   number <- "[-−0-9.]+"
   expect_match(first, paste0(
-    "^", number, ", 95% HPD \\[", number, ", ", number, "\\], ",
+    "^", number, ", 95% HDI \\[", number, ", ", number, "\\], ",
     "\\*pd\\* [=<>] \\.[0-9]{3}$"
   ))
 })

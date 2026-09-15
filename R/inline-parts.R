@@ -361,10 +361,10 @@ inline_loo <- function(x, opts) {
 
 # ---- contrasts -----------------------------------------------------------
 
-# `4.28, 95% HPD [1.38, 7.01], *pd* = .998`: a parameters row without the
+# `4.28, 95% HDI [1.38, 7.01], *pd* = .998`: a parameters row without the
 # coefficient rule. A contrast has no `component`, so no symbol is
 # invented for it; `symbol =` prints one. The interval label comes from
-# the row's `ci_method` as everywhere (`HPD` on the emmGrid route's
+# the row's `ci_method` as everywhere (`HDI` on the emmGrid route's
 # default), and the ROPE share prints when the table carries one.
 inline_contrasts <- function(x, opts) {
   m <- opts$markup

@@ -168,7 +168,7 @@ different questions and are never merged into one string.
 
 A \code{contrasts} row from an emmeans grid prints like a parameters row:
 the estimate, its interval labelled from the row's \code{ci_method}
-(\verb{95\% HPD [1.38, 7.01]} on the emmGrid route's default, \code{CrI} under
+(\verb{95\% HDI [1.38, 7.01]} on the emmGrid route's default, \code{CrI} under
 \code{ci = "eti"}), then \verb{*pd*} and the ROPE share when the table carries
 one. No symbol is printed unless \code{symbol} gives one: a contrast has
 no coefficient rule to apply. A row is addressed by its \code{contrast}
