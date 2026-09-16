@@ -39,6 +39,14 @@ Rounding is C \code{printf} rounding through \code{\link[=formatC]{formatC()}}, 
 \code{papaja::apa_num()}. A result that would read \code{-0.00} is printed
 \code{0.00}.
 }
+\section{papaja}{
+
+papaja also exports a function called \code{apa_num()}. Whichever of the
+two packages is attached last masks the other's. With both attached,
+call \code{apabayes::apa_num()}. papaja's version prints a hyphen where
+this one prints the minus sign.
+}
+
 \examples{
 apa_num(c(0.4712, -0.4712, 1234.5678, NA))
 apa_num(0.4712, leading_zero = FALSE)

@@ -100,6 +100,12 @@ as_printed <- function(x, digits) {
 #' `papaja::apa_num()`. A result that would read `-0.00` is printed
 #' `0.00`.
 #'
+#' @section papaja:
+#' papaja also exports a function called `apa_num()`. Whichever of the
+#' two packages is attached last masks the other's. With both attached,
+#' call `apabayes::apa_num()`. papaja's version prints a hyphen where
+#' this one prints the minus sign.
+#'
 #' @return A character vector of `length(x)` without names; `NA` in
 #'   gives `NA_character_` out.
 #' @seealso [apa_p()], [apa_pd()], [apa_prob()], [apa_ci()], [apa_bf()],
@@ -168,6 +174,12 @@ format_num <- function(x, digits, leading_zero, big_mark, target) {
 #' of `.500` means the sign is undetermined, not that the effect is
 #' absent (Makowski et al., 2019). Report an interval or a ROPE share
 #' next to it when evidence for a null is the question.
+#'
+#' @section apa7 and papaja:
+#' apa7 and papaja also export a function called `apa_p()`. Whichever
+#' package is attached last masks the others. With more than one
+#' attached, call `apabayes::apa_p()`. The versions do not print the
+#' same: `apa7::apa_p()` gives `.01` where this one gives `.012`.
 #'
 #' @return A character vector of `length(x)`; `NA` in gives
 #'   `NA_character_` out.

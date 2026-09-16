@@ -20,6 +20,11 @@
   `apa_table()` shares its name with `papaja::apa_table()`: whichever
   package is attached last masks the other.
 
+* docs: `?apa_p` and `?apa_num` state that apa7 and papaja export
+  functions of the same names and that the package attached last masks
+  the others. `apa7::apa_p()` prints two decimals where `apa_p()` prints
+  three; `papaja::apa_num()` prints a hyphen for the minus sign.
+
 * feat: `apa_tidy()` reports a `BayesFactor` object (`ttestBF()`,
   `anovaBF()`, `regressionBF()`, `correlationBF()`,
   `contingencyTableBF()`, …) as a `bf_models` table read from the

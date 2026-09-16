@@ -49,6 +49,14 @@ of \code{.500} means the sign is undetermined, not that the effect is
 absent (Makowski et al., 2019). Report an interval or a ROPE share
 next to it when evidence for a null is the question.
 }
+\section{apa7 and papaja}{
+
+apa7 and papaja also export a function called \code{apa_p()}. Whichever
+package is attached last masks the others. With more than one
+attached, call \code{apabayes::apa_p()}. The versions do not print the
+same: \code{apa7::apa_p()} gives \code{.01} where this one gives \code{.012}.
+}
+
 \examples{
 apa_p(c(0.0234, 0.0004, 0.9996, NA))
 apa_p(0.0234, symbol = TRUE)
