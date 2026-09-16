@@ -1,5 +1,30 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_table()` also reports hypotheses, model comparisons,
+  Bayes factor tables and inclusion Bayes factors. A `hypotheses` table
+  has `Hypothesis`, `Group` when some row has one, the estimate and its
+  interval as on a parameters table, and `*BF*~10~`, with `ER` and
+  `*P*(H)` on request. A `loo` table has `Model`, `ΔELPD (*SE*)`,
+  `ELPD (*SE*)` — the standard error travels inside the cell — `*p*~loo~`
+  and `*w*`, with `LOOIC` on request, and the note names the model the
+  differences are taken from. A `bf_models` table has `Model`,
+  `*BF*~10~` against the denominator model (which prints `1.00`) and
+  `Error (%)`, with `log(*BF*~10~)` and `*P*(M | D)` on request. A
+  `bf_inclusion` table has `Term`, `*P*(incl)`, `*P*(incl | D)` and
+  `*BF*~incl~`, or `*BF*~excl~` under `bf_direction = "01"`. A default
+  `stats` is the reporting set, not every transform of the same
+  evidence. Where `apa_inline()` refuses a Bayes factor it cannot print
+  as a number, a table keeps the row: an overflowed or underflowed one
+  leaves its cell empty and brings in a log column, a missing or
+  infinite inclusion Bayes factor leaves its cell empty, and the note
+  names the terms and says why. Every header is the string the inline
+  layer prints, so a table reads like the sentence beside it.
+
+* fix: `apa_p()`, `apa_pd()` and `apa_prob()` accept a probability that
+  misses `[0, 1]` by floating-point rounding error — bayestestR returns
+  a posterior inclusion probability of `1 + 2.2e-16` — instead of
+  refusing it. A value genuinely outside the range is still an error.
+
 * feat: `apa_table()` turns a parameters or diagnostics table, or any
   object `apa_tidy()` accepts, into the tibble
   `apa7::apa_flextable()` renders as it is: every value formatted to
@@ -15,8 +40,8 @@
   the abbreviations the table shows, the interval's kind, the ROPE
   range, a count of divergent transitions, never a verdict — for the
   apaquarto chunk option `#| apa-note: !expr apa_note(tab)`, with the
-  table made in an earlier chunk. Hypotheses, comparison, fit-index,
-  contrast and correlation tables are refused by name for now.
+  table made in an earlier chunk. Fit-index, contrast and correlation
+  tables are refused by name for now.
   `apa_table()` shares its name with `papaja::apa_table()`: whichever
   package is attached last masks the other.
 

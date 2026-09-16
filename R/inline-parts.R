@@ -119,6 +119,56 @@ resolve_leading_zero <- function(x, leading_zero) {
   rep(leading_zero, nrow(x))
 }
 
+# The names the comparison statistics print under, shared with the table
+# headers so that a table reads like the sentence beside it
+# (spec-apa_table.md S2-4). `direction` sets the Bayes factor subscripts;
+# an inclusion Bayes factor reads `excl` under "01".
+stat_names <- function(m, direction = "10") {
+  prob <- function(label) paste0(markup("P", m, italic = TRUE), label)
+  bf <- markup("BF", m, italic = TRUE, subscript = direction)
+  bf_incl <- markup(
+    "BF", m,
+    italic = TRUE, subscript = if (direction == "01") "excl" else "incl"
+  )
+  c(
+    elpd_diff = paste0(symbol("delta", m), "ELPD"),
+    elpd = "ELPD",
+    se = markup("SE", m, italic = TRUE),
+    p_loo = markup("p", m, italic = TRUE, subscript = "loo"),
+    looic = "LOOIC",
+    weight = markup("w", m, italic = TRUE),
+    bf = bf,
+    log_bf = paste0("log(", bf, ")"),
+    post_prob_h = prob("(H)"),
+    post_prob_m = prob("(M | D)"),
+    bf_incl = bf_incl,
+    log_bf_incl = paste0("log(", bf_incl, ")"),
+    p_prior = prob("(incl)"),
+    p_posterior = prob("(incl | D)")
+  )
+}
+
+# A Bayes factor that is exp(log_bf) overflows to Inf above ~709 and
+# underflows to 0 below ~-745; `∞` or `0.00` would misreport a finite
+# one, so such a "lost" row is reported by its log.
+lost_bf_rows <- function(bf, log_bf) {
+  !is.na(bf) & (is.infinite(bf) | bf == 0) & is.finite(log_bf)
+}
+
+# The kind of each inclusion Bayes factor, judged on the log Bayes factor
+# where the table has one, else on the log of `bf`, so that a hand-built
+# table with `bf` alone still prints: "missing" (a term in every model),
+# "infinite" (a posterior inclusion probability rounded to 1 or 0),
+# "lost" (see lost_bf_rows()), else "normal".
+inclusion_bf_kinds <- function(bf, log_bf) {
+  log_bf_known <- ifelse(is.na(log_bf), log(bf), log_bf)
+  kinds <- rep("normal", length(bf))
+  kinds[is.na(log_bf_known)] <- "missing"
+  kinds[is.infinite(log_bf_known)] <- "infinite"
+  kinds[lost_bf_rows(bf, log_bf)] <- "lost"
+  kinds
+}
+
 # ---- parameters ----------------------------------------------------------
 
 inline_parameters <- function(x, opts) {
@@ -170,7 +220,7 @@ inline_hypotheses <- function(x, opts) {
     er = if ("er" %in% s) apa_er(x$evid_ratio, markup = m, symbol = TRUE),
     post_prob = if ("post_prob" %in% s) {
       stat_string(
-        paste0(markup("P", m, italic = TRUE), "(H)"),
+        stat_names(m)[["post_prob_h"]],
         apa_prob(x$post_prob, opts$digits_prob, markup = m)
       )
     }
@@ -325,32 +375,27 @@ inline_loo <- function(x, opts) {
   m <- opts$markup
   lz <- if (identical(opts$leading_zero, "auto")) TRUE else opts$leading_zero
   num <- function(v) apa_num(v, opts$digits, lz, markup = m)
-  se <- markup("SE", m, italic = TRUE)
+  name <- stat_names(m)
   # A value with its standard error; an unknown SE drops that part alone.
-  with_se <- function(name, value, se_value) {
-    out <- stat_string(name, num(value))
+  with_se <- function(stat, value, se_value) {
+    out <- stat_string(name[[stat]], num(value))
     has_se <- !is.na(out) & !is.na(se_value)
     out[has_se] <- paste0(
-      out[has_se], ", ", stat_string(se, num(se_value[has_se]))
+      out[has_se], ", ", stat_string(name[["se"]], num(se_value[has_se]))
     )
     out
   }
   s <- opts$stats
   parts <- list(
     elpd_diff = if ("elpd_diff" %in% s) {
-      with_se(paste0(symbol("delta", m), "ELPD"), x$elpd_diff, x$se_diff)
+      with_se("elpd_diff", x$elpd_diff, x$se_diff)
     },
-    elpd = if ("elpd" %in% s) with_se("ELPD", x$elpd, x$se_elpd),
-    p_loo = if ("p_loo" %in% s) {
-      stat_string(
-        markup("p", m, italic = TRUE, subscript = "loo"), num(x$p_loo)
-      )
-    },
-    looic = if ("looic" %in% s) stat_string("LOOIC", num(x$looic)),
+    elpd = if ("elpd" %in% s) with_se("elpd", x$elpd, x$se_elpd),
+    p_loo = if ("p_loo" %in% s) stat_string(name[["p_loo"]], num(x$p_loo)),
+    looic = if ("looic" %in% s) stat_string(name[["looic"]], num(x$looic)),
     weight = if ("weight" %in% s) {
       stat_string(
-        markup("w", m, italic = TRUE),
-        apa_prob(x$weight, opts$digits_prob, markup = m)
+        name[["weight"]], apa_prob(x$weight, opts$digits_prob, markup = m)
       )
     }
   )
@@ -428,22 +473,19 @@ inline_correlations <- function(x, opts) {
 # ---- bf_models -----------------------------------------------------------
 
 # `*BF*~10~ = 6.38`: the row's model over the denominator, a number and
-# never a word (decision 15). `bf` is exp(log_bf), which overflows to Inf
-# above ~709 and underflows to 0 below ~-745; a Bayes factor printed as
-# `∞` or `0.00` would misreport a finite one, so such a row prints its
-# log instead, once.
+# never a word (decision 15). A lost Bayes factor (lost_bf_rows()) prints
+# its log instead, once.
 inline_bf_models <- function(x, opts) {
   m <- opts$markup
   lz <- if (identical(opts$leading_zero, "auto")) TRUE else opts$leading_zero
   direction <- opts$bf_direction
-  bf_name <- markup("BF", m, italic = TRUE, subscript = direction)
+  name <- stat_names(m, direction)
   log_bf <- if (direction == "01") -x$log_bf else x$log_bf
   log_part <- stat_string(
-    paste0("log(", bf_name, ")"),
+    name[["log_bf"]],
     apa_num(log_bf, opts$digits, lz, markup = m)
   )
-  lost <- !is.na(x$bf) & (is.infinite(x$bf) | x$bf == 0) &
-    is.finite(x$log_bf)
+  lost <- lost_bf_rows(x$bf, x$log_bf)
   s <- opts$stats
   bf_part <- apa_bf(x$bf, direction, opts$bf, markup = m, symbol = TRUE)
   bf_part[lost] <- log_part[lost]
@@ -458,7 +500,7 @@ inline_bf_models <- function(x, opts) {
     log_bf = if ("log_bf" %in% s) log_part,
     post_prob = if ("post_prob" %in% s) {
       stat_string(
-        paste0(markup("P", m, italic = TRUE), "(M | D)"),
+        name[["post_prob_m"]],
         apa_prob(x$post_prob, opts$digits_prob, markup = m)
       )
     }
@@ -471,17 +513,24 @@ inline_bf_models <- function(x, opts) {
 }
 
 # `*BF*~10~ = 86.59 ± < 0.1%`: BayesFactor's proportional error, after the
-# Bayes factor (or the log a lost one prints). apa_prob() floors an exact
-# 0 to "< 0.1%" (measured), which would claim an error there is none of,
-# so 0 prints as itself; an unknown error adds nothing.
+# Bayes factor (or the log a lost one prints); an unknown error adds
+# nothing.
 with_bf_error <- function(bf_part, error, m) {
-  error_string <- apa_prob(error, percent = TRUE, markup = m)
-  error_string[!is.na(error) & error == 0] <- "0%"
+  error_string <- bf_error_strings(error, m)
   add <- !is.na(bf_part) & !is.na(error)
   bf_part[add] <- paste0(
     bf_part[add], " ", symbol("pm", m), " ", error_string[add]
   )
   bf_part
+}
+
+# The error as a percentage. apa_prob() floors an exact 0 to "< 0.1%"
+# (measured), which would claim an error there is none of, so 0 prints as
+# itself.
+bf_error_strings <- function(error, m) {
+  out <- apa_prob(error, percent = TRUE, markup = m)
+  out[!is.na(error) & error == 0] <- "0%"
+  out
 }
 
 # ---- bf_inclusion --------------------------------------------------------
@@ -500,29 +549,24 @@ inline_bf_inclusion <- function(x, opts, call = rlang::caller_env()) {
   }
   lz <- if (identical(opts$leading_zero, "auto")) TRUE else opts$leading_zero
   direction <- opts$bf_direction
-  bf_name <- markup(
-    "BF", m,
-    italic = TRUE, subscript = if (direction == "01") "excl" else "incl"
-  )
+  name <- stat_names(m, direction)
   log_bf <- if (direction == "01") -x$log_bf else x$log_bf
-  bf_part <- stat_string(bf_name, apa_bf(x$bf, direction, opts$bf, markup = m))
-  lost <- !is.na(x$bf) & (is.infinite(x$bf) | x$bf == 0) &
-    is.finite(x$log_bf)
+  bf_part <- stat_string(
+    name[["bf_incl"]], apa_bf(x$bf, direction, opts$bf, markup = m)
+  )
+  lost <- lost_bf_rows(x$bf, x$log_bf)
   bf_part[lost] <- stat_string(
-    paste0("log(", bf_name, ")"),
+    name[["log_bf_incl"]],
     apa_num(log_bf[lost], opts$digits, lz, markup = m)
   )
-  probability <- function(label, value) {
-    stat_string(
-      paste0(markup("P", m, italic = TRUE), label),
-      apa_prob(value, opts$digits_prob, markup = m)
-    )
+  probability <- function(stat, value) {
+    stat_string(name[[stat]], apa_prob(value, opts$digits_prob, markup = m))
   }
   parts <- list(
     bf = if ("bf" %in% s) bf_part,
-    p_prior = if ("p_prior" %in% s) probability("(incl)", x$p_prior),
+    p_prior = if ("p_prior" %in% s) probability("p_prior", x$p_prior),
     p_posterior = if ("p_posterior" %in% s) {
-      probability("(incl | D)", x$p_posterior)
+      probability("p_posterior", x$p_posterior)
     }
   )
   data.frame(
@@ -532,11 +576,11 @@ inline_bf_inclusion <- function(x, opts, call = rlang::caller_env()) {
   )
 }
 
-# The log Bayes factor where the table has one, else the log of `bf`, so
-# that a hand-built table with `bf` alone still prints.
+# Missing and infinite inclusion Bayes factors (inclusion_bf_kinds()) are
+# no number to print.
 check_inclusion_bf <- function(x, call = rlang::caller_env()) {
-  log_bf <- ifelse(is.na(x$log_bf), log(x$bf), x$log_bf)
-  unknown <- is.na(log_bf)
+  kinds <- inclusion_bf_kinds(x$bf, x$log_bf)
+  unknown <- kinds == "missing"
   if (any(unknown)) {
     # nolint next: object_usage_linter. Used in the cli string below.
     terms <- x$term[unknown]
@@ -551,7 +595,7 @@ check_inclusion_bf <- function(x, call = rlang::caller_env()) {
       call = call
     )
   }
-  infinite <- is.infinite(log_bf)
+  infinite <- kinds == "infinite"
   if (any(infinite)) {
     # nolint next: object_usage_linter. Used in the cli string below.
     terms <- x$term[infinite]

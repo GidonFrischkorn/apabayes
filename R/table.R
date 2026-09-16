@@ -32,23 +32,43 @@
 #' [apa_tidy_diagnostics()] has a `Term` column and `*R̂*`, `ESS~bulk~`
 #' and `ESS~tail~`.
 #'
+#' A `hypotheses` table from [brms::hypothesis()] has one row per
+#' hypothesis: `Hypothesis`, `Group` when some row has one, the estimate
+#' and its interval as on a parameters table (rows tested at different
+#' levels carry the level in their cells), and `*BF*~10~`; `stats` adds
+#' the evidence ratio `ER` and the posterior probability `*P*(H)`. A
+#' `loo` table from [loo::loo_compare()] has `Model`, the difference to
+#' the first model with its standard error in the cell, `ΔELPD (*SE*)`,
+#' the model's own `ELPD (*SE*)`, `*p*~loo~`, and `*w*` when the table
+#' was extracted with `weights =`; `LOOIC` is added with `stats`. A
+#' `bf_models` table has `Model`, `*BF*~10~` against the denominator
+#' model (which prints `1.00`) and, from the BayesFactor route, the
+#' proportional error `Error (%)`; `stats` adds `log(*BF*~10~)` and the
+#' posterior model probability `*P*(M | D)`. A `bf_inclusion` table from
+#' [bayestestR::bayesfactor_inclusion()] has `Term`, `*P*(incl)`,
+#' `*P*(incl | D)` and `*BF*~incl~` (`*BF*~excl~` under
+#' `bf_direction = "01"`). A Bayes factor too large or too small to print
+#' leaves its cell empty and is given in a log column instead; an
+#' inclusion Bayes factor that is missing or infinite leaves its cell
+#' empty. The note says which, and why.
+#'
 #' Every number goes through the format layer ([apa_num()], [apa_pd()],
-#' [apa_prob()], [apa_bf()], [apa_p()]) and is decimal-aligned with
-#' [apa7::align_chr()], except Bayes factors, whose markup the alignment
-#' would count as digits. A missing value is an empty cell. The ROPE
-#' share drops its `%`, which the header carries. No header equals a
-#' column name apa7 formats itself, so `apa_flextable()` renders the table
-#' as it is.
+#' [apa_prob()], [apa_bf()], [apa_er()], [apa_p()]) and is decimal-aligned
+#' with [apa7::align_chr()], except Bayes factors and evidence ratios,
+#' whose markup and bounds the alignment would count as digits. A missing
+#' value is an empty cell. The ROPE share and the error drop their `%`,
+#' which the header carries. No header equals a column name apa7 formats
+#' itself, so `apa_flextable()` renders the table as it is.
 #'
 #' The note defines the abbreviations the table shows (`*Mdn* = posterior
 #' median; CrI = equal-tailed credible interval; *pd* = probability of
-#' direction.`), states that the estimates are standardized when every
-#' row is, and on a diagnostics table counts the divergent transitions.
-#' Nothing printed judges the result.
+#' direction.`), names the reference model of a comparison and the
+#' denominator of a Bayes factor, states that the estimates are
+#' standardized when every row is, and on a diagnostics table counts the
+#' divergent transitions. Nothing printed judges the result.
 #'
-#' Hypotheses, model comparisons, Bayes factor tables, fit indices,
-#' contrasts and correlations are not tabulated yet: `apa_table()`
-#' refuses them by name, and [apa_inline()] reports them.
+#' Fit indices, contrasts and correlations are not tabulated yet:
+#' `apa_table()` refuses them by name, and [apa_inline()] reports them.
 #'
 #' @section Rendering in apaquarto:
 #' Make the table in an earlier chunk, then name the note in the chunk
@@ -96,20 +116,29 @@
 #'   `"rhat"`, `"ess_bulk"`, `"ess_tail"` for a parameters table (the
 #'   default shows each of the first four that has a value in some row),
 #'   `"rhat"`, `"ess_bulk"`, `"ess_tail"` for a diagnostics table (the
-#'   default shows each that has a value in some row). The column order is
-#'   fixed, whatever the order of `stats`; `character()` shows the label,
-#'   the estimate and the interval alone. Naming a statistic the table
-#'   has no value of is an error.
+#'   default shows each that has a value in some row); `"bf"`, `"er"`,
+#'   `"post_prob"` for a hypotheses table (default `"bf"`);
+#'   `"elpd_diff"`, `"elpd"`, `"p_loo"`, `"looic"`, `"weight"` for a loo
+#'   table (default all but `"looic"`); `"bf"`, `"error"`, `"log_bf"`,
+#'   `"post_prob"` for a bf_models table (default `"bf"` and `"error"`;
+#'   `"error"` needs `"bf"`); `"p_prior"`, `"p_posterior"`, `"bf"` for a
+#'   bf_inclusion table (default all three). A default shows only the
+#'   statistics that have a value in some row. The column order is fixed,
+#'   whatever the order of `stats`; `character()` shows the label, and on
+#'   a parameters or hypotheses table the estimate and the interval, alone.
+#'   Naming a statistic the table has no value of is an error.
 #' @param interval `FALSE` drops the interval column.
 #' @param ci_label `"auto"` labels the interval from the rows' `ci_method`
 #'   (`CrI`, `HDI`, `HPD`, `SPI`, `BCI`, `CI`); a string replaces the label
 #'   in the header and in the note, where the definition still follows
 #'   `ci_method`. `NULL` is an error: an interval column needs a header
 #'   that names it.
-#' @param digits Decimals for estimates, interval bounds and R-hat; `NULL`
-#'   is 2.
-#' @param digits_prob Decimals for pd and p. The ROPE share keeps
-#'   [apa_prob()]'s own percentage digits, as in [apa_inline()].
+#' @param digits Decimals for estimates, interval bounds, R-hat, ELPD and
+#'   its standard error, `p_loo`, LOOIC and log Bayes factors; `NULL` is 2.
+#' @param digits_prob Decimals for pd, p, model weights and posterior and
+#'   inclusion probabilities. The ROPE share and the error of a Bayes
+#'   factor keep [apa_prob()]'s own percentage digits, as in
+#'   [apa_inline()].
 #' @param leading_zero `"auto"` drops the leading zero of the estimate and
 #'   its bounds on standardized rows and keeps it elsewhere; `TRUE` or
 #'   `FALSE` force one rule.
@@ -145,6 +174,33 @@
 #' tab
 #' apa_note(tab)
 #' apa_table(t, stats = c("pd", "rhat", "ess_bulk"), group_rows = TRUE)
+#'
+#' # A model comparison: the standard error travels in the cell, and the
+#' # note names the model the differences are taken from.
+#' cmp <- apabayes_tidy(
+#'   data.frame(
+#'     model = c("full", "additive", "null"),
+#'     elpd_diff = c(0, -1.83, -24.6), se_diff = c(0, 1.85, 6.44),
+#'     elpd = c(-56.51, -58.34, -81.11), se_elpd = c(4.07, 4.48, 6.12),
+#'     p_loo = c(3.51, 2.50, 1.24)
+#'   ),
+#'   type = "loo", reference = "full"
+#' )
+#' apa_table(cmp)
+#' apa_note(apa_table(cmp))
+#'
+#' # A Bayes factor too large to print keeps its row: the cell is empty,
+#' # the log column comes in unasked, and the note says why.
+#' bfm <- apabayes_tidy(
+#'   data.frame(
+#'     model = c("intercept only", "wt", "wt + hp"),
+#'     bf = c(1, 4.6e7, Inf), log_bf = c(0, 17.64, 779.19),
+#'     denominator = c(TRUE, FALSE, FALSE)
+#'   ),
+#'   type = "bf_models", denominator_model = "intercept only"
+#' )
+#' apa_table(bfm)
+#' apa_note(apa_table(bfm))
 #' @examplesIf rlang::is_installed("lavaan")
 #' hs <- lavaan::HolzingerSwineford1939
 #' fit <- lavaan::cfa("visual =~ x1 + x2 + x3", hs)
@@ -250,33 +306,51 @@ check_table_headers <- function(headers, call = rlang::caller_env()) {
 
 # ---- options -------------------------------------------------------------
 
-# The table kinds built so far (slice 1 of spec-apa_table.md). The others
-# abort by name until their slices land, as the inline layer did.
+# The table kinds built so far (slices 1 and 2 of spec-apa_table.md). The
+# others abort by name until their slices land, as the inline layer did.
 table_types <- function() {
-  c("parameters", "diagnostics")
+  c(
+    "parameters", "diagnostics", "hypotheses", "loo", "bf_models",
+    "bf_inclusion"
+  )
 }
 
 # The statistic columns a type can show, in column order.
 table_stats_vocabulary <- function(type) {
   switch(type,
     parameters = c("pd", "rope", "bf", "p", "rhat", "ess_bulk", "ess_tail"),
-    diagnostics = c("rhat", "ess_bulk", "ess_tail")
+    diagnostics = c("rhat", "ess_bulk", "ess_tail"),
+    hypotheses = c("bf", "er", "post_prob"),
+    loo = c("elpd_diff", "elpd", "p_loo", "looic", "weight"),
+    bf_models = c("bf", "error", "log_bf", "post_prob"),
+    bf_inclusion = c("p_prior", "p_posterior", "bf")
   )
 }
 
 # What `stats = NULL` may show, before the all-NA columns are dropped:
 # the diagnostics are opt-in on a parameters table (decision 5 of the
-# spec), and the whole point of a diagnostics table.
+# spec), and the whole point of a diagnostics table. Elsewhere it is the
+# reporting set (S2-2), not every transform of the same evidence: ER and
+# *P*(H) restate a hypothesis's Bayes factor, LOOIC is -2 ELPD, and a
+# log Bayes factor or model probability restates the Bayes factor.
 table_default_stats <- function(type) {
   switch(type,
     parameters = c("pd", "rope", "bf", "p"),
-    diagnostics = c("rhat", "ess_bulk", "ess_tail")
+    hypotheses = "bf",
+    loo = c("elpd_diff", "elpd", "p_loo", "weight"),
+    bf_models = c("bf", "error"),
+    table_stats_vocabulary(type)
   )
 }
 
-# The contract column behind a statistic.
-table_stat_column <- function(stat) {
-  if (stat == "rope") "rope_pct" else stat
+# The contract column behind a statistic, where its name differs.
+table_stat_column <- function(stat, type) {
+  columns <- switch(type,
+    parameters = c(rope = "rope_pct"),
+    hypotheses = c(bf = "bf10", er = "evid_ratio"),
+    character()
+  )
+  if (stat %in% names(columns)) columns[[stat]] else stat
 }
 
 # Validate every option once and return them as a list, `stats` resolved
@@ -323,11 +397,17 @@ table_options <- function(x, stats, interval, ci_label, digits, digits_prob,
 check_table_stats <- function(x, stats, type, call = rlang::caller_env()) {
   vocabulary <- table_stats_vocabulary(type)
   filled <- vapply(vocabulary, function(stat) {
-    any(!is.na(x[[table_stat_column(stat)]]))
+    any(!is.na(x[[table_stat_column(stat, type)]]))
   }, logical(1))
   if (is.null(stats)) {
     default <- table_default_stats(type)
-    return(vocabulary[vocabulary %in% default & filled])
+    shown <- vocabulary[vocabulary %in% default & filled]
+    # A default never breaks the error rule below: no Bayes factor, no
+    # error column.
+    if (!"bf" %in% shown) {
+      shown <- setdiff(shown, "error")
+    }
+    return(shown)
   }
   # One check for both ways to get it wrong: a value that is not a name
   # (`stats = 1`) is reported as an unknown name.
@@ -343,13 +423,16 @@ check_table_stats <- function(x, stats, type, call = rlang::caller_env()) {
       call = call
     )
   }
+  # Only a bf_models table has an error column; as inline, it qualifies
+  # the Bayes factor and is never shown alone.
+  check_inline_error_stat(stats, call)
   empty <- vocabulary[vocabulary %in% stats & !filled]
   if (length(empty) > 0) {
     cli::cli_abort(
       c(
         "{.arg stats} names {.val {empty[1]}}, which has no value in any
          row of this table.",
-        i = table_stat_sources()[[empty[1]]]
+        i = table_stat_sources(type)[[empty[1]]]
       ),
       call = call
     )
@@ -357,19 +440,39 @@ check_table_stats <- function(x, stats, type, call = rlang::caller_env()) {
   vocabulary[vocabulary %in% stats]
 }
 
-# Where each statistic column is filled, for the all-NA error: the
-# `apa_tidy()` argument when one fills it, the route otherwise.
-table_stat_sources <- function() {
+# Where each statistic column of a type is filled, for the all-NA error:
+# the `apa_tidy()` argument or fit setting when one fills it, the route
+# otherwise, and for a column every route of the type records, that this
+# object did not.
+table_stat_sources <- function(type) {
   diagnostics <- "It is filled by {.code apa_tidy(x, diagnostics = TRUE)}
                   on a posterior."
-  c(
-    pd = "It is filled by the posterior routes of {.fn apa_tidy}.",
-    rope = "It is filled by {.code apa_tidy(x, rope = )}.",
-    bf = "It is filled by {.fn apa_tidy} on a table computed with
-          {.code test = \"bf\"}.",
-    p = "It is filled by the lavaan route of {.fn apa_tidy}.",
-    rhat = diagnostics, ess_bulk = diagnostics, ess_tail = diagnostics
+  not_recorded <- "It is not recorded by the object this table came from."
+  prior_draws <- "It is filled when the brms fit was run with
+                  {.code sample_prior = \"yes\"}."
+  vocabulary <- table_stats_vocabulary(type)
+  sources <- rlang::set_names(rep(not_recorded, length(vocabulary)), vocabulary)
+  known <- switch(type,
+    parameters = c(
+      pd = "It is filled by the posterior routes of {.fn apa_tidy}.",
+      rope = "It is filled by {.code apa_tidy(x, rope = )}.",
+      bf = "It is filled by {.fn apa_tidy} on a table computed with
+            {.code test = \"bf\"}.",
+      p = "It is filled by the lavaan route of {.fn apa_tidy}.",
+      rhat = diagnostics, ess_bulk = diagnostics, ess_tail = diagnostics
+    ),
+    diagnostics = c(
+      rhat = diagnostics, ess_bulk = diagnostics, ess_tail = diagnostics
+    ),
+    hypotheses = c(bf = prior_draws, er = prior_draws, post_prob = prior_draws),
+    loo = c(weight = "It is filled by {.code apa_tidy(x, weights = )}."),
+    bf_models = c(
+      error = "It is filled by the BayesFactor route of {.fn apa_tidy}."
+    ),
+    character()
   )
+  sources[names(known)] <- known
+  sources
 }
 
 # Grouping needs a parameters table with something to group by.

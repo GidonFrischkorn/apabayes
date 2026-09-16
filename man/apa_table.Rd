@@ -51,10 +51,17 @@ statistic columns to show: \code{"pd"}, \code{"rope"}, \code{"bf"}, \code{"p"},
 \code{"rhat"}, \code{"ess_bulk"}, \code{"ess_tail"} for a parameters table (the
 default shows each of the first four that has a value in some row),
 \code{"rhat"}, \code{"ess_bulk"}, \code{"ess_tail"} for a diagnostics table (the
-default shows each that has a value in some row). The column order is
-fixed, whatever the order of \code{stats}; \code{character()} shows the label,
-the estimate and the interval alone. Naming a statistic the table
-has no value of is an error.}
+default shows each that has a value in some row); \code{"bf"}, \code{"er"},
+\code{"post_prob"} for a hypotheses table (default \code{"bf"});
+\code{"elpd_diff"}, \code{"elpd"}, \code{"p_loo"}, \code{"looic"}, \code{"weight"} for a loo
+table (default all but \code{"looic"}); \code{"bf"}, \code{"error"}, \code{"log_bf"},
+\code{"post_prob"} for a bf_models table (default \code{"bf"} and \code{"error"};
+\code{"error"} needs \code{"bf"}); \code{"p_prior"}, \code{"p_posterior"}, \code{"bf"} for a
+bf_inclusion table (default all three). A default shows only the
+statistics that have a value in some row. The column order is fixed,
+whatever the order of \code{stats}; \code{character()} shows the label, and on
+a parameters or hypotheses table the estimate and the interval, alone.
+Naming a statistic the table has no value of is an error.}
 
 \item{interval}{\code{FALSE} drops the interval column.}
 
@@ -64,11 +71,13 @@ in the header and in the note, where the definition still follows
 \code{ci_method}. \code{NULL} is an error: an interval column needs a header
 that names it.}
 
-\item{digits}{Decimals for estimates, interval bounds and R-hat; \code{NULL}
-is 2.}
+\item{digits}{Decimals for estimates, interval bounds, R-hat, ELPD and
+its standard error, \code{p_loo}, LOOIC and log Bayes factors; \code{NULL} is 2.}
 
-\item{digits_prob}{Decimals for pd and p. The ROPE share keeps
-\code{\link[=apa_prob]{apa_prob()}}'s own percentage digits, as in \code{\link[=apa_inline]{apa_inline()}}.}
+\item{digits_prob}{Decimals for pd, p, model weights and posterior and
+inclusion probabilities. The ROPE share and the error of a Bayes
+factor keep \code{\link[=apa_prob]{apa_prob()}}'s own percentage digits, as in
+\code{\link[=apa_inline]{apa_inline()}}.}
 
 \item{leading_zero}{\code{"auto"} drops the leading zero of the estimate and
 its bounds on standardized rows and keeps it elsewhere; \code{TRUE} or
@@ -117,21 +126,41 @@ is refused. A \code{diagnostics} table from
 \code{\link[=apa_tidy_diagnostics]{apa_tidy_diagnostics()}} has a \code{Term} column and \verb{*R̂*}, \verb{ESS~bulk~}
 and \verb{ESS~tail~}.
 
+A \code{hypotheses} table from \code{\link[brms:hypothesis]{brms::hypothesis()}} has one row per
+hypothesis: \code{Hypothesis}, \code{Group} when some row has one, the estimate
+and its interval as on a parameters table (rows tested at different
+levels carry the level in their cells), and \verb{*BF*~10~}; \code{stats} adds
+the evidence ratio \code{ER} and the posterior probability \verb{*P*(H)}. A
+\code{loo} table from \code{\link[loo:loo_compare]{loo::loo_compare()}} has \code{Model}, the difference to
+the first model with its standard error in the cell, \verb{ΔELPD (*SE*)},
+the model's own \verb{ELPD (*SE*)}, \verb{*p*~loo~}, and \verb{*w*} when the table
+was extracted with \verb{weights =}; \code{LOOIC} is added with \code{stats}. A
+\code{bf_models} table has \code{Model}, \verb{*BF*~10~} against the denominator
+model (which prints \code{1.00}) and, from the BayesFactor route, the
+proportional error \verb{Error (\%)}; \code{stats} adds \verb{log(*BF*~10~)} and the
+posterior model probability \verb{*P*(M | D)}. A \code{bf_inclusion} table from
+\code{\link[bayestestR:bayesfactor_inclusion]{bayestestR::bayesfactor_inclusion()}} has \code{Term}, \verb{*P*(incl)},
+\verb{*P*(incl | D)} and \verb{*BF*~incl~} (\verb{*BF*~excl~} under
+\code{bf_direction = "01"}). A Bayes factor too large or too small to print
+leaves its cell empty and is given in a log column instead; an
+inclusion Bayes factor that is missing or infinite leaves its cell
+empty. The note says which, and why.
+
 Every number goes through the format layer (\code{\link[=apa_num]{apa_num()}}, \code{\link[=apa_pd]{apa_pd()}},
-\code{\link[=apa_prob]{apa_prob()}}, \code{\link[=apa_bf]{apa_bf()}}, \code{\link[=apa_p]{apa_p()}}) and is decimal-aligned with
-\code{\link[apa7:align_chr]{apa7::align_chr()}}, except Bayes factors, whose markup the alignment
-would count as digits. A missing value is an empty cell. The ROPE
-share drops its \verb{\%}, which the header carries. No header equals a
-column name apa7 formats itself, so \code{apa_flextable()} renders the table
-as it is.
+\code{\link[=apa_prob]{apa_prob()}}, \code{\link[=apa_bf]{apa_bf()}}, \code{\link[=apa_er]{apa_er()}}, \code{\link[=apa_p]{apa_p()}}) and is decimal-aligned
+with \code{\link[apa7:align_chr]{apa7::align_chr()}}, except Bayes factors and evidence ratios,
+whose markup and bounds the alignment would count as digits. A missing
+value is an empty cell. The ROPE share and the error drop their \verb{\%},
+which the header carries. No header equals a column name apa7 formats
+itself, so \code{apa_flextable()} renders the table as it is.
 
-The note defines the abbreviations the table shows (\verb{*Mdn* = posterior median; CrI = equal-tailed credible interval; *pd* = probability of direction.}), states that the estimates are standardized when every
-row is, and on a diagnostics table counts the divergent transitions.
-Nothing printed judges the result.
+The note defines the abbreviations the table shows (\verb{*Mdn* = posterior median; CrI = equal-tailed credible interval; *pd* = probability of direction.}), names the reference model of a comparison and the
+denominator of a Bayes factor, states that the estimates are
+standardized when every row is, and on a diagnostics table counts the
+divergent transitions. Nothing printed judges the result.
 
-Hypotheses, model comparisons, Bayes factor tables, fit indices,
-contrasts and correlations are not tabulated yet: \code{apa_table()}
-refuses them by name, and \code{\link[=apa_inline]{apa_inline()}} reports them.
+Fit indices, contrasts and correlations are not tabulated yet:
+\code{apa_table()} refuses them by name, and \code{\link[=apa_inline]{apa_inline()}} reports them.
 }
 
 \section{Rendering in apaquarto}{
@@ -193,6 +222,33 @@ tab <- apa_table(t)
 tab
 apa_note(tab)
 apa_table(t, stats = c("pd", "rhat", "ess_bulk"), group_rows = TRUE)
+
+# A model comparison: the standard error travels in the cell, and the
+# note names the model the differences are taken from.
+cmp <- apabayes_tidy(
+  data.frame(
+    model = c("full", "additive", "null"),
+    elpd_diff = c(0, -1.83, -24.6), se_diff = c(0, 1.85, 6.44),
+    elpd = c(-56.51, -58.34, -81.11), se_elpd = c(4.07, 4.48, 6.12),
+    p_loo = c(3.51, 2.50, 1.24)
+  ),
+  type = "loo", reference = "full"
+)
+apa_table(cmp)
+apa_note(apa_table(cmp))
+
+# A Bayes factor too large to print keeps its row: the cell is empty,
+# the log column comes in unasked, and the note says why.
+bfm <- apabayes_tidy(
+  data.frame(
+    model = c("intercept only", "wt", "wt + hp"),
+    bf = c(1, 4.6e7, Inf), log_bf = c(0, 17.64, 779.19),
+    denominator = c(TRUE, FALSE, FALSE)
+  ),
+  type = "bf_models", denominator_model = "intercept only"
+)
+apa_table(bfm)
+apa_note(apa_table(bfm))
 \dontshow{if (rlang::is_installed("lavaan")) withAutoprint(\{ # examplesIf}
 hs <- lavaan::HolzingerSwineford1939
 fit <- lavaan::cfa("visual =~ x1 + x2 + x3", hs)

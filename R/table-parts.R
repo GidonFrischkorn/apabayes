@@ -3,12 +3,17 @@
 # `columns`, a named list of character vectors whose names are the
 # markdown headers, in column order, and `note`, a string or NA. Every
 # number passes through the format layer and then `apa7::align_chr()`;
-# nothing here rounds, and nothing here attaches a word to a number.
+# nothing here rounds, and nothing here attaches a word to a number. The
+# hypotheses and model-comparison types live in table-parts-models.R.
 
 table_parts <- function(x, opts) {
   switch(opts$type,
     parameters = table_parameters(x, opts),
-    diagnostics = table_diagnostics(x, opts)
+    diagnostics = table_diagnostics(x, opts),
+    hypotheses = table_hypotheses(x, opts),
+    loo = table_loo(x, opts),
+    bf_models = table_bf_models(x, opts),
+    bf_inclusion = table_bf_inclusion(x, opts)
   )
 }
 
@@ -32,6 +37,24 @@ table_num <- function(x, digits, leading_zero) {
     markup = "md"
   )
   out
+}
+
+# The estimate column of the parameters and hypotheses types. Its header
+# and definition come from the `centrality` attribute, never from the
+# rows: `*Mdn*`, `*M*`, or `Estimate`, which needs no definition.
+table_estimate <- function(x, leading_zero, opts) {
+  centrality <- attr(x, "centrality", exact = TRUE)
+  headers <- c(median = "*Mdn*", mean = "*M*")
+  header <- unname(headers[centrality])
+  header[is.na(header)] <- "Estimate"
+  definitions <- c(
+    median = "*Mdn* = posterior median", mean = "*M* = posterior mean"
+  )[centrality[!is.na(centrality)]]
+  list(
+    header = header,
+    cells = align_cells(table_num(x$estimate, opts$digits, leading_zero)),
+    definitions = unname(definitions)
+  )
 }
 
 # `<definitions joined by "; ">.` and any sentences after it; NA when the
@@ -171,7 +194,6 @@ diagnostic_definitions <- function(stats) {
 # ---- parameters ----------------------------------------------------------
 
 table_parameters <- function(x, opts) {
-  centrality <- attr(x, "centrality", exact = TRUE)
   rope_ci <- attr(x, "rope_ci", exact = TRUE)
   rope_range <- attr(x, "rope_range", exact = TRUE)
   columns <- list()
@@ -191,12 +213,8 @@ table_parameters <- function(x, opts) {
   label[is.na(label)] <- ""
   columns[[if (sem) "Path" else "Predictor"]] <- label
 
-  estimate_headers <- c(median = "*Mdn*", mean = "*M*")
-  estimate_header <- unname(estimate_headers[centrality])
-  estimate_header[is.na(estimate_header)] <- "Estimate"
-  columns[[estimate_header]] <- align_cells(
-    table_num(x$estimate, opts$digits, lz)
-  )
+  estimate <- table_estimate(x, lz, opts)
+  columns[[estimate$header]] <- estimate$cells
 
   interval <- table_interval(x, lz, opts)
   if (!is.null(interval)) {
@@ -227,9 +245,7 @@ table_parameters <- function(x, opts) {
   columns <- c(columns, diagnostic_columns(x, s, opts$digits))
 
   definitions <- c(
-    c(
-      median = "*Mdn* = posterior median", mean = "*M* = posterior mean"
-    )[centrality[!is.na(centrality)]],
+    estimate$definitions,
     interval$definitions,
     if ("pd" %in% s) "*pd* = probability of direction",
     if ("rope" %in% s) rope_definition(rope_ci, rope_range, opts$digits),

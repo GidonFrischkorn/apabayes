@@ -39,9 +39,19 @@ check_flag <- function(x, arg = rlang::caller_arg(x),
   invisible(x)
 }
 
+# A probability summed from model probabilities can miss [0, 1] by
+# rounding error (measured: bayestestR's posterior inclusion probability
+# of 1 + 2.2e-16, one ulp), which is no reason to refuse it; the floor
+# and cap of format_bounded() print it. The tolerance is R's own
+# (`all.equal()`'s default), not the measured case, because the error
+# grows with the number of models summed and no bound on that is known;
+# it is still many orders of magnitude below the mistakes the check is
+# for — a percentage read as a proportion, a wrong denominator — which
+# miss the range by 1 or more and still abort.
 check_range01 <- function(x, arg = rlang::caller_arg(x),
                           call = rlang::caller_env()) {
-  bad <- x[!is.na(x) & (x < 0 | x > 1)]
+  tolerance <- sqrt(.Machine$double.eps)
+  bad <- x[!is.na(x) & (x < -tolerance | x > 1 + tolerance)]
   if (length(bad) > 0) {
     cli::cli_abort(
       "{.arg {arg}} must lie between 0 and 1; found {.val {bad[1]}}.",
