@@ -348,7 +348,11 @@ apabayes_tidy <- function(x,
   } else {
     rlang::arg_match(centrality)
   }
-  check_ci_method(ci_method)
+  # Canonical, not just checked: `check_ci_method()` turns a bare `NA`
+  # into `NA_character_`, and the attribute must carry that, because a
+  # logical `NA` used as a subscript into a named character vector
+  # recycles across the whole vector instead of returning one `NA`.
+  ci_method <- check_ci_method(ci_method)
   check_ci_level(ci_level)
 
   contract <- tidy_contracts()[[type]]

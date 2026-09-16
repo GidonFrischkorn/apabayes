@@ -1,5 +1,30 @@
 # apabayes 0.0.0.9000
 
+* feat: `apa_table()` reports the last three contract types, so every
+  table `apa_tidy()` produces can be tabulated. A `sem_fit` table has one
+  row per model: `Model` when any row names one, then `*χ*^2^`, `*df*`
+  and `*p*` where the fit records them, and one column per fit index, each
+  index whose interval the table records carrying that interval in the
+  cell (`RMSEA [90% CI]`, `.092 [.071, .114]`) as a comparison table
+  carries its standard error. The default shows the indices the table has
+  a value for, so a lavaan fit gives the frequentist set and a blavaan fit
+  PPP, BRMSEA and BΓ̂ with no argument, and the two stacked give
+  both. A `contrasts` table has `Contrast`, `Group` when the contrasts
+  were computed within one, the estimate and its interval, `*pd*` and
+  `% in ROPE`. A `correlations` table names each pair in `Variable 1` and
+  `Variable 2` rather than repeating lavaan's `~~`, then `*r*`, its
+  interval, `*pd*`, `*BF*~10~` and the pairwise `*n*`, which can differ
+  between rows of one table.
+
+* fix: a frequentist interval column is headed `95% CI (Wald)` or
+  `95% CI (bootstrap)` rather than `95% CI`, and an interval whose method
+  the table does not record is headed `95% Interval`. apa7 reads any
+  header ending in `<digits>% CI` as a confidence-interval column of its
+  own and re-formats it: a row with no bounds had its empty cell rewritten
+  to `NA`. `apa_inline()` still writes `95% CI` in running text, which
+  apa7 never sees. A `ci_label` that would produce such a header is
+  refused, naming it.
+
 * feat: `apa_table()` also reports hypotheses, model comparisons,
   Bayes factor tables and inclusion Bayes factors. A `hypotheses` table
   has `Hypothesis`, `Group` when some row has one, the estimate and its

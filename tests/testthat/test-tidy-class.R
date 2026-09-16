@@ -141,7 +141,10 @@ test_that("the arguments are validated", {
 test_that("NA is allowed for ci_method and ci_level", {
   out <- apabayes_tidy(minimal(), ci_method = NA, ci_level = NA)
 
-  expect_true(is.na(attr(out, "ci_method")))
+  # The type matters, not just the missingness: a logical NA used as a
+  # subscript into a named character vector recycles across the whole
+  # vector rather than returning one NA.
+  expect_identical(attr(out, "ci_method"), NA_character_)
   expect_true(all(is.na(out$ci_method)))
   expect_true(all(is.na(out$ci_level)))
 })

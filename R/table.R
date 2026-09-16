@@ -67,8 +67,20 @@
 #' standardized when every row is, and on a diagnostics table counts the
 #' divergent transitions. Nothing printed judges the result.
 #'
-#' Fit indices, contrasts and correlations are not tabulated yet:
-#' `apa_table()` refuses them by name, and [apa_inline()] reports them.
+#' A `sem_fit` table has one row per model: `Model` when any row names
+#' one, then `*χ*^2^`, `*df*`, `*p*` and the fit indices the table
+#' records, each index whose interval it records carrying that interval
+#' in the cell (`RMSEA [90% CI]`, `.092 [.071, .114]`). A `contrasts`
+#' table has `Contrast`, `Group` when the contrasts were computed within
+#' one, the estimate and its interval, `*pd*` and `% in ROPE`. A
+#' `correlations` table names each pair in `Variable 1` and `Variable 2`,
+#' then `*r*`, its interval, `*pd*`, `*BF*~10~` and the pairwise `*n*`,
+#' which can differ between rows.
+#'
+#' A frequentist interval is headed `95% CI (Wald)` or
+#' `95% CI (bootstrap)` rather than `95% CI`, which apa7 reads as a
+#' column of its own to format; [apa_inline()] still writes `95% CI` in
+#' running text.
 #'
 #' @section Rendering in apaquarto:
 #' Make the table in an earlier chunk, then name the note in the chunk
@@ -201,6 +213,37 @@
 #' )
 #' apa_table(bfm)
 #' apa_note(apa_table(bfm))
+#'
+#' # Fit indices: one row per model, each index carrying its interval in
+#' # the cell.
+#' fits <- apabayes_tidy(
+#'   data.frame(
+#'     model = c("One factor", "Two factors"),
+#'     chisq = c(85.31, 24.02), df = c(24, 19), p = c(8.5e-09, 0.196),
+#'     cfi = c(0.931, 0.994), tli = c(0.896, 0.991),
+#'     rmsea = c(0.092, 0.030), rmsea_low = c(0.071, 0.000),
+#'     rmsea_high = c(0.114, 0.061), rmsea_level = c(0.90, 0.90),
+#'     srmr = c(0.065, 0.031)
+#'   ),
+#'   type = "sem_fit", centrality = NA, ci_method = NA, ci_level = NA
+#' )
+#' apa_table(fits)
+#' apa_note(apa_table(fits))
+#'
+#' # Correlations: each pair named in two columns, with the pairwise n.
+#' cors <- apabayes_tidy(
+#'   data.frame(
+#'     term = c("mpg~~wt", "mpg~~hp"), var1 = c("mpg", "mpg"),
+#'     var2 = c("wt", "hp"), estimate = c(-0.82, -0.70),
+#'     ci_low = c(-0.92, -0.84), ci_high = c(-0.66, -0.51),
+#'     pd = c(1, 1), bf = c(1.3e7, 3.9e4), n = c(32, 32),
+#'     method = "Bayesian Pearson correlation"
+#'   ),
+#'   type = "correlations", centrality = "median", ci_method = "hdi",
+#'   ci_level = 0.95
+#' )
+#' apa_table(cors)
+#' apa_note(apa_table(cors))
 #' @examplesIf rlang::is_installed("lavaan")
 #' hs <- lavaan::HolzingerSwineford1939
 #' fit <- lavaan::cfa("visual =~ x1 + x2 + x3", hs)
@@ -282,21 +325,16 @@ new_apa_table <- function(columns, note, type, call = rlang::caller_env()) {
   out
 }
 
-# No header may be a column name apa7 formats itself, nor contain `_`:
-# `apa_flextable()` would re-format that column (a `p` header had its
-# values rewritten, spec measured 3) or split it into a spanner (measured
-# 4). The fixed headers are chosen to pass; a user's `ci_label` standing
-# alone as a header is what this catches.
+# A header containing `_` makes apa7 split the column into a spanner
+# (spec measured 4), whatever the values in it.
 check_table_headers <- function(headers, call = rlang::caller_env()) {
-  reserved <- names(apa7::column_formats())
-  bad <- headers[headers %in% reserved | grepl("_", headers, fixed = TRUE)]
+  bad <- headers[grepl("_", headers, fixed = TRUE)]
   if (length(bad) > 0) {
     cli::cli_abort(
       c(
-        "The header {.val {bad[1]}} would be re-formatted by apa7.",
-        i = "{.fn apa7::apa_flextable} formats a column with that name
-             itself, or splits a name containing {.code _}; choose another
-             {.arg ci_label}."
+        "The header {.val {bad[1]}} would be split by apa7.",
+        i = "{.fn apa7::apa_flextable} reads {.code _} in a name as a
+             spanner; choose another {.arg ci_label}."
       ),
       call = call
     )
@@ -304,18 +342,35 @@ check_table_headers <- function(headers, call = rlang::caller_env()) {
   invisible(headers)
 }
 
-# ---- options -------------------------------------------------------------
-
-# The table kinds built so far (slices 1 and 2 of spec-apa_table.md). The
-# others abort by name until their slices land, as the inline layer did.
-table_types <- function() {
-  c(
-    "parameters", "diagnostics", "hypotheses", "loo", "bf_models",
-    "bf_inclusion"
-  )
+# A header equal to one of apa7's 65 format names is a column apa7
+# formats itself, rewriting its values (a `p` header turned `.012` into
+# `.01`, spec measured 3) or aborting (bare `CI`). An interval header is
+# matched by shape as well: anything ending in `<digits>% CI` is read as
+# a confidence interval, which is what makes `95% CI` unsafe while
+# `95% p` and `95% CI (Wald)` are not (slice-3 measured M1). The
+# package's own headers are measured safe one by one; what cannot be
+# measured in advance is a user's `ci_label`, which is what this checks.
+check_ci_label_header <- function(header, call = rlang::caller_env()) {
+  reserved <- names(apa7::column_formats())
+  if (header %in% reserved || grepl("[0-9]+% CI$", header)) {
+    cli::cli_abort(
+      c(
+        "The header {.val {header}} would be re-formatted by apa7.",
+        i = "{.fn apa7::apa_flextable} formats a column with that name
+             itself; choose another {.arg ci_label}."
+      ),
+      call = call
+    )
+  }
+  invisible(header)
 }
 
-# The statistic columns a type can show, in column order.
+# ---- options -------------------------------------------------------------
+
+# The statistic columns a type can show, in column order. Every type of
+# the tidy contract has one since slice 3, so nothing is refused for not
+# being built: an unknown type cannot reach here, because
+# validate_apabayes_tidy() refuses it first.
 table_stats_vocabulary <- function(type) {
   switch(type,
     parameters = c("pd", "rope", "bf", "p", "rhat", "ess_bulk", "ess_tail"),
@@ -323,7 +378,12 @@ table_stats_vocabulary <- function(type) {
     hypotheses = c("bf", "er", "post_prob"),
     loo = c("elpd_diff", "elpd", "p_loo", "looic", "weight"),
     bf_models = c("bf", "error", "log_bf", "post_prob"),
-    bf_inclusion = c("p_prior", "p_posterior", "bf")
+    bf_inclusion = c("p_prior", "p_posterior", "bf"),
+    sem_fit = c(
+      "chisq", "cfi", "tli", "rmsea", "srmr", "ppp", "brmsea", "bgammahat"
+    ),
+    contrasts = c("pd", "rope"),
+    correlations = c("pd", "rope", "bf", "n")
   )
 }
 
@@ -339,6 +399,10 @@ table_default_stats <- function(type) {
     hypotheses = "bf",
     loo = c("elpd_diff", "elpd", "p_loo", "weight"),
     bf_models = c("bf", "error"),
+    # A correlation's `n` is not a transform of `r`: it is the pairwise
+    # complete n, and it differs between rows of one table (slice-3
+    # measured M8), so a table shows it where a sentence need not.
+    correlations = c("pd", "bf", "n"),
     table_stats_vocabulary(type)
   )
 }
@@ -347,6 +411,8 @@ table_default_stats <- function(type) {
 table_stat_column <- function(stat, type) {
   columns <- switch(type,
     parameters = c(rope = "rope_pct"),
+    contrasts = c(rope = "rope_pct"),
+    correlations = c(rope = "rope_pct"),
     hypotheses = c(bf = "bf10", er = "evid_ratio"),
     character()
   )
@@ -359,12 +425,6 @@ table_options <- function(x, stats, interval, ci_label, digits, digits_prob,
                           leading_zero, bf, bf_direction, group_rows,
                           call = rlang::caller_env()) {
   type <- attr(x, "type", exact = TRUE)
-  if (!type %in% table_types()) {
-    cli::cli_abort(
-      "{.fn apa_table} does not yet report a table of type {.val {type}}.",
-      call = call
-    )
-  }
   check_flag(group_rows, call = call)
   if (group_rows) {
     check_table_grouping(x, type, call)
@@ -384,7 +444,10 @@ table_options <- function(x, stats, interval, ci_label, digits, digits_prob,
   )
   list(
     type = type, stats = stats, interval = interval, ci_label = ci_label,
-    digits = digits %||% 2, digits_prob = digits_prob,
+    # `digits_given` keeps the unresolved argument: a sem_fit table's
+    # default is not one number but two (chi-square 2, indices 3, the
+    # inline rule), so it has to tell "unset" from "2".
+    digits = digits %||% 2, digits_given = digits, digits_prob = digits_prob,
     leading_zero = leading_zero, bf = bf, bf_direction = bf_direction,
     group_rows = group_rows
   )
@@ -450,6 +513,8 @@ table_stat_sources <- function(type) {
   not_recorded <- "It is not recorded by the object this table came from."
   prior_draws <- "It is filled when the brms fit was run with
                   {.code sample_prior = \"yes\"}."
+  lavaan_route <- "It is filled by {.fn apa_tidy_sem_fit} on a lavaan fit."
+  blavaan_route <- "It is filled by {.fn apa_tidy_sem_fit} on a blavaan fit."
   vocabulary <- table_stats_vocabulary(type)
   sources <- rlang::set_names(rep(not_recorded, length(vocabulary)), vocabulary)
   known <- switch(type,
@@ -469,6 +534,15 @@ table_stat_sources <- function(type) {
     bf_models = c(
       error = "It is filled by the BayesFactor route of {.fn apa_tidy}."
     ),
+    # The two SEM backends fill disjoint sets of indices (slice-3
+    # measured M6), so the route that fills one is worth naming.
+    sem_fit = c(
+      chisq = lavaan_route, cfi = lavaan_route, tli = lavaan_route,
+      rmsea = lavaan_route, srmr = lavaan_route,
+      ppp = blavaan_route, brmsea = blavaan_route, bgammahat = blavaan_route
+    ),
+    contrasts = c(rope = "It is filled by {.code apa_tidy(x, rope = )}."),
+    correlations = c(rope = "It is filled by {.code apa_tidy(x, rope = )}."),
     character()
   )
   sources[names(known)] <- known

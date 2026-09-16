@@ -292,15 +292,18 @@ test_that("an SEM fixture heads its label column Path", {
   assert_table_contract(tab)
 })
 
-test_that("lavaan std shows 95% CI and *p*, drops the leading zero", {
+test_that("lavaan std shows 95% CI (Wald) and *p*, drops the leading zero", {
+  # S3-1: the table's label for a wald interval names the method, because
+  # apa7 reads `95% CI` as its own CI column (slice-3 measured M1).
   lav <- fixture("tidy_lavaan_std")
   tab <- apa_table(lav)
-  expect_identical(names(tab), c("Path", "Estimate", "95% CI", "*p*"))
+  expect_identical(names(tab), c("Path", "Estimate", "95% CI (Wald)", "*p*"))
   expect_identical(
     tab[["Estimate"]], num_cell(lav$estimate, leading_zero = FALSE)
   )
   expect_identical(
-    tab[["95% CI"]], ci_cell(lav$ci_low, lav$ci_high, leading_zero = FALSE)
+    tab[["95% CI (Wald)"]],
+    ci_cell(lav$ci_low, lav$ci_high, leading_zero = FALSE)
   )
   expect_identical(tab[["*p*"]], p_cell(lav$p))
   forced <- apa_table(lav, leading_zero = TRUE)
@@ -615,7 +618,7 @@ test_that("the rhat/ESS note lines depend on which are shown", {
 test_that("the lavaan std note names the CI and standardization", {
   note <- apa_note(apa_table(fixture("tidy_lavaan_std")))
   expect_identical(
-    note, "CI = Wald confidence interval. Estimates are standardized."
+    note, "CI (Wald) = Wald confidence interval. Estimates are standardized."
   )
 })
 
@@ -692,18 +695,6 @@ test_that("apa_note() aborts without a note attribute or on an NA note", {
   lav <- fixture("tidy_lavaan_std")
   na_note <- apa_table(lav, stats = character(), interval = FALSE)
   expect_error(apa_note(na_note), regexp = "nothing to define")
-})
-
-# ---- unbuilt types --------------------------------------------------------
-
-test_that("a type not built yet aborts naming the type (sem_fit)", {
-  # hypotheses, loo, bf_models and bf_inclusion move to the slice 2
-  # block below, where they no longer abort; contrasts and correlations
-  # are not built in either slice and are covered there too.
-  expect_error(
-    apa_table(fixture("sem_fit_blavaan")),
-    regexp = "does not yet report.*sem_fit"
-  )
 })
 
 # ---- option validation ----------------------------------------------------
@@ -794,20 +785,20 @@ test_that("a header that apa7 would re-format aborts", {
 })
 
 test_that("an automatic CI label never stands alone as a header", {
-  # Wald rows at mixed levels would be headed bare `CI`, which apa7
-  # formats itself; the label moves into the cells under `Interval`.
+  # S3-1: a wald interval is labelled `CI (Wald)` in a table, so no
+  # automatic label is a name apa7 formats itself, at any level.
   x <- mixed_levels_table()
   x$ci_method <- c("wald", "wald")
   tab <- apa_table(x)
-  expect_true("Interval" %in% names(tab))
-  expect_match(tab[["Interval"]][1], "^90% CI \\[", perl = TRUE)
-  expect_match(tab[["Interval"]][2], "^95% CI \\[", perl = TRUE)
+  expect_true("CI (Wald)" %in% names(tab))
+  expect_match(tab[["CI (Wald)"]][1], "^90% \\[", perl = TRUE)
+  expect_match(tab[["CI (Wald)"]][2], "^95% \\[", perl = TRUE)
   assert_table_contract(tab)
   none <- x
   none$ci_level <- NA_real_
   tab2 <- apa_table(none)
-  expect_true("Interval" %in% names(tab2))
-  expect_match(tab2[["Interval"]][1], "^CI \\[", perl = TRUE)
+  expect_true("CI (Wald)" %in% names(tab2))
+  expect_match(tab2[["CI (Wald)"]][1], "^\\[", perl = TRUE)
   assert_table_contract(tab2)
 })
 
@@ -1139,25 +1130,26 @@ correlations_stub <- function() {
   )
 }
 
-# ---- the four types leave "does not yet report" behind --------------------
+# ---- every tidy type is now tabulated --------------------------------------
 
-test_that("hypotheses, loo, bf_models and bf_inclusion no longer abort", {
+test_that("no tidy type aborts \"does not yet report\" any more", {
   skip_if_not_installed("loo")
-  expect_no_error(apa_table(fixture("tidy_hypotheses")))
-  expect_no_error(apa_table(apa_tidy(fixture("compare_loo_matrix"))))
-  expect_no_error(apa_table(bf_models_no_denominator_flag()))
-  expect_no_error(apa_table(apa_tidy(fixture("inc_anova"))))
-})
-
-test_that("contrasts and correlations still abort naming the type", {
-  expect_error(
-    apa_table(contrasts_stub()),
-    regexp = "does not yet report.*contrasts"
-  )
-  expect_error(
-    apa_table(correlations_stub()),
-    regexp = "does not yet report.*correlations"
-  )
+  for (t in list(
+    fixture("tidy_hypotheses"),
+    apa_tidy(fixture("compare_loo_matrix")),
+    bf_models_no_denominator_flag(),
+    apa_tidy(fixture("inc_anova")),
+    fixture("sem_fit_blavaan"),
+    contrasts_stub(),
+    correlations_stub()
+  )) {
+    expect_no_error(apa_table(t))
+  }
+  # Every type the contract knows has a vocabulary, so the slice-1
+  # refusal has nothing left to refuse (slice 3).
+  for (type in tidy_types()) {
+    expect_type(table_stats_vocabulary(type), "character")
+  }
 })
 
 # ---- hypotheses: names, order and cells ------------------------------------
@@ -1896,4 +1888,630 @@ test_that("default method: apa_table(compare_loo_matrix, weights = w) forwards w
   via_tidy <- apa_table(apa_tidy(cmp, weights = w))
   expect_identical(direct, via_tidy)
   assert_table_contract(direct)
+})
+
+# ==========================================================================
+# Slice 3 (spec-apa_table.md § "Slice 3"): sem_fit, contrasts, correlations
+# ==========================================================================
+
+# ---- slice 3 composition helpers ------------------------------------------
+
+# A fit index: three decimals by default, no leading zero, aligned.
+index_cell <- function(x, digits = 3, leading_zero = FALSE) {
+  apa7::align_chr(apa_num(x, digits, leading_zero, markup = "md"))
+}
+
+# The S3-3 cell: the aligned value, a space, then the interval bracket the
+# shared rule builds. A row without bounds keeps the value alone; a row
+# without a value is empty.
+index_interval_cell <- function(value, lo, hi, digits = 3,
+                                leading_zero = FALSE, prefix = "") {
+  v <- index_cell(value, digits, leading_zero)
+  bracket <- ci_cell(lo, hi, digits, leading_zero)
+  out <- paste0(v, " ", prefix, bracket)
+  out[!nzchar(bracket)] <- v[!nzchar(bracket)]
+  out[is.na(value)] <- ""
+  out
+}
+
+n_cell <- function(x) {
+  apa7::align_chr(apa_num(x, 0, big_mark = TRUE, markup = "md"))
+}
+
+# ---- slice 3 hand-built tables --------------------------------------------
+
+# nolint next: object_usage_linter. test_lavaan_fit() is defined in setup.R.
+lavaan_sem_fit <- function() apa_tidy_sem_fit(test_lavaan_fit("cfa"))
+
+# The lavaan and blavaan rows stacked: each index family is empty in the
+# other's row (measured M6).
+stacked_sem_fit <- function() {
+  lav <- as.data.frame(lavaan_sem_fit())
+  # nolint next: object_usage_linter. fixture() is defined in setup.R.
+  bla <- as.data.frame(fixture("sem_fit_blavaan"))
+  lav$model <- "One factor"
+  apabayes_tidy(
+    rbind(lav, bla),
+    type = "sem_fit", centrality = "median", ci_method = "hdi",
+    ci_level = 0.9
+  )
+}
+
+sem_fit_no_model <- function() {
+  x <- as.data.frame(lavaan_sem_fit())
+  apabayes_tidy(x,
+    type = "sem_fit", centrality = NA, ci_method = NA,
+    ci_level = NA
+  )
+}
+
+sem_fit_fractional_df <- function() {
+  x <- as.data.frame(lavaan_sem_fit())
+  x$model <- "Scaled"
+  x$df <- 23.47
+  apabayes_tidy(x,
+    type = "sem_fit", centrality = NA, ci_method = NA,
+    ci_level = NA
+  )
+}
+
+sem_fit_mixed_level <- function() {
+  a <- as.data.frame(lavaan_sem_fit())
+  a$model <- "A"
+  b <- a
+  b$model <- "B"
+  b$rmsea_level <- 0.95
+  apabayes_tidy(rbind(a, b),
+    type = "sem_fit", centrality = NA,
+    ci_method = NA, ci_level = NA
+  )
+}
+
+# A contrasts table without a ROPE share: the emmGrid route's shape (M7).
+contrasts_no_rope <- function() {
+  apabayes_tidy(
+    data.frame(
+      contrast = c("a - b", "a - c"), estimate = c(1.5, -0.4),
+      ci_low = c(0.2, -1.1), ci_high = c(2.8, 0.3), pd = c(0.98, 0.87)
+    ),
+    type = "contrasts", centrality = "median", ci_method = "hdi",
+    ci_level = 0.95
+  )
+}
+
+correlations_two_methods <- function() {
+  apabayes_tidy(
+    data.frame(
+      term = c("x~~y", "x~~z"), var1 = c("x", "x"), var2 = c("y", "z"),
+      estimate = c(0.42, -0.31), ci_low = c(0.1, -0.6),
+      ci_high = c(0.7, 0.02), pd = c(0.99, 0.94), n = c(30, 28),
+      method = c(
+        "Bayesian Pearson correlation",
+        "Bayesian Spearman correlation"
+      )
+    ),
+    type = "correlations", centrality = "median", ci_method = "hdi",
+    ci_level = 0.95
+  )
+}
+
+correlations_no_method <- function() {
+  apabayes_tidy(
+    data.frame(
+      term = "x~~y", var1 = "x", var2 = "y", estimate = 0.42,
+      ci_low = 0.1, ci_high = 0.7, pd = 0.99, n = 30
+    ),
+    type = "correlations", centrality = "median", ci_method = "hdi",
+    ci_level = 0.95
+  )
+}
+
+# ---- S3-1: the table's interval label names a frequentist method ---------
+
+test_that("a wald interval is headed CI (Wald) and a boot one CI (bootstrap)", {
+  lav <- fixture("tidy_lavaan_std")
+  expect_true("95% CI (Wald)" %in% names(apa_table(lav)))
+  boot <- lav
+  boot$ci_method <- "boot"
+  tab <- apa_table(boot)
+  expect_true("95% CI (bootstrap)" %in% names(tab))
+  expect_match(apa_note(tab), "CI (bootstrap) = bootstrap confidence interval",
+    fixed = TRUE
+  )
+  assert_table_contract(tab)
+})
+
+test_that("an NA ci_method is headed Interval", {
+  x <- fixture("tidy_lavaan_std")
+  x$ci_method <- NA_character_
+  tab <- apa_table(x)
+  expect_true("95% Interval" %in% names(tab))
+  assert_table_contract(tab)
+})
+
+test_that("a wald table with a missing bound still passes apa7 untouched", {
+  # The M2 regression: apa7 reads `95% CI` as its own CI column and
+  # rewrote the empty cell to NA. The label now names the method.
+  lav <- fixture("tidy_lavaan_std")
+  lav$ci_low[1] <- NA_real_
+  lav$ci_high[1] <- NA_real_
+  tab <- apa_table(lav)
+  expect_identical(tab[["95% CI (Wald)"]][1], "")
+  assert_table_contract(tab)
+})
+
+test_that("apa_inline() still says CI, not CI (Wald)", {
+  # The inline label is unchanged: apa7 never sees running text.
+  lav <- fixture("tidy_lavaan_std")
+  expect_match(apa_inline(lav)$full_result[1], "95% CI [", fixed = TRUE)
+  expect_no_match(apa_inline(lav)$full_result[1], "CI (Wald)", fixed = TRUE)
+})
+
+test_that("a ci_label that is a format name behind a level aborts", {
+  # apa7 strips a leading `<digits>% ` before matching (M1), which
+  # check_table_headers() now does too.
+  t <- fixture("tidy_brms_full")
+  expect_error(apa_table(t, ci_label = "CI"), regexp = "apa7")
+  expect_no_error(apa_table(t, ci_label = "CI (Wald)"))
+})
+
+# ---- sem_fit: names, order and cells ---------------------------------------
+
+test_that("a lavaan sem_fit table shows the frequentist indices in order", {
+  f <- lavaan_sem_fit()
+  row <- as.data.frame(f)
+  tab <- apa_table(f)
+  expect_identical(
+    names(tab),
+    c("*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA [90% CI]", "SRMR")
+  )
+  expect_identical(tab[["*χ*^2^"]], num_cell(row$chisq, 2))
+  expect_identical(tab[["*df*"]], num_cell(row$df, 0))
+  expect_identical(tab[["*p*"]], p_cell(row$p))
+  expect_identical(tab[["CFI"]], index_cell(row$cfi))
+  expect_identical(tab[["TLI"]], index_cell(row$tli))
+  expect_identical(tab[["SRMR"]], index_cell(row$srmr))
+  expect_identical(
+    tab[["RMSEA [90% CI]"]],
+    index_interval_cell(row$rmsea, row$rmsea_low, row$rmsea_high)
+  )
+  assert_table_contract(tab)
+})
+
+test_that("a blavaan sem_fit table shows the Bayesian indices", {
+  b <- fixture("sem_fit_blavaan")
+  row <- as.data.frame(b)
+  tab <- apa_table(b)
+  expect_identical(
+    names(tab),
+    c("Model", "PPP", "BRMSEA [90% HDI]", "BΓ̂ [90% HDI]")
+  )
+  expect_identical(tab[["Model"]], row$model)
+  expect_identical(tab[["PPP"]], index_cell(row$ppp))
+  expect_identical(
+    tab[["BRMSEA [90% HDI]"]],
+    index_interval_cell(row$brmsea, row$brmsea_low, row$brmsea_high)
+  )
+  expect_identical(
+    tab[["BΓ̂ [90% HDI]"]],
+    index_interval_cell(row$bgammahat, row$bgammahat_low, row$bgammahat_high)
+  )
+  assert_table_contract(tab)
+})
+
+test_that("a stacked table shows both index families with empty cells", {
+  s <- stacked_sem_fit()
+  tab <- apa_table(s)
+  expect_identical(
+    names(tab),
+    c(
+      "Model", "*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA [90% CI]",
+      "SRMR", "PPP", "BRMSEA [90% HDI]", "BΓ̂ [90% HDI]"
+    )
+  )
+  expect_identical(tab[["Model"]], c("One factor", "Two factors"))
+  expect_identical(tab[["CFI"]][2], "")
+  expect_identical(tab[["PPP"]][1], "")
+  expect_identical(tab[["RMSEA [90% CI]"]][2], "")
+  assert_table_contract(tab)
+})
+
+test_that("the Model column appears only when some row records one", {
+  expect_false("Model" %in% names(apa_table(sem_fit_no_model())))
+  expect_true("Model" %in% names(apa_table(fixture("sem_fit_blavaan"))))
+})
+
+test_that("df prints as an integer when whole and with digits when not", {
+  whole <- apa_table(lavaan_sem_fit())
+  expect_identical(whole[["*df*"]], "24")
+  frac <- sem_fit_fractional_df()
+  tab <- apa_table(frac)
+  expect_identical(tab[["*df*"]], num_cell(as.data.frame(frac)$df, 2))
+  expect_match(tab[["*df*"]], "23.47", fixed = TRUE)
+  assert_table_contract(tab)
+})
+
+test_that("sem_fit digits: NULL gives chi-square 2 and the indices 3", {
+  f <- lavaan_sem_fit()
+  row <- as.data.frame(f)
+  default <- apa_table(f)
+  expect_identical(default[["*χ*^2^"]], num_cell(row$chisq, 2))
+  expect_identical(default[["CFI"]], index_cell(row$cfi, 3))
+  one <- apa_table(f, digits = 1)
+  expect_identical(one[["*χ*^2^"]], num_cell(row$chisq, 1))
+  expect_identical(one[["CFI"]], index_cell(row$cfi, 1))
+  assert_table_contract(one)
+})
+
+test_that("sem_fit leading_zero drops it on indices, keeps it on chi-square", {
+  f <- lavaan_sem_fit()
+  row <- as.data.frame(f)
+  auto <- apa_table(f)
+  expect_match(auto[["CFI"]], "^\\.", perl = TRUE)
+  expect_match(auto[["*χ*^2^"]], "^85", perl = TRUE)
+  forced <- apa_table(f, leading_zero = TRUE)
+  expect_identical(forced[["CFI"]], index_cell(row$cfi, 3, TRUE))
+  assert_table_contract(forced)
+})
+
+test_that("sem_fit stats subsets, and character() gives Model alone", {
+  s <- stacked_sem_fit()
+  sub <- apa_table(s, stats = c("cfi", "chisq"))
+  expect_identical(names(sub), c("Model", "*χ*^2^", "*df*", "*p*", "CFI"))
+  bare <- apa_table(s, stats = character())
+  expect_identical(names(bare), "Model")
+  expect_error(
+    apa_table(sem_fit_no_model(), stats = character()),
+    regexp = "no column|nothing"
+  )
+  assert_table_contract(sub)
+  assert_table_contract(bare)
+})
+
+test_that("sem_fit stats naming an all-NA index names the route", {
+  expect_error(
+    apa_table(lavaan_sem_fit(), stats = "ppp"),
+    regexp = "blavaan"
+  )
+  expect_error(
+    apa_table(fixture("sem_fit_blavaan"), stats = "cfi"),
+    regexp = "lavaan"
+  )
+})
+
+# ---- sem_fit: intervals ------------------------------------------------
+
+test_that("interval = FALSE drops the bracket from header and cell", {
+  f <- lavaan_sem_fit()
+  row <- as.data.frame(f)
+  tab <- apa_table(f, interval = FALSE)
+  expect_true("RMSEA" %in% names(tab))
+  expect_false(any(grepl("[", names(tab), fixed = TRUE)))
+  expect_identical(tab[["RMSEA"]], index_cell(row$rmsea))
+  assert_table_contract(tab)
+})
+
+test_that("RMSEA is labelled CI even when the table's ci_method is hdi", {
+  s <- stacked_sem_fit()
+  expect_true("RMSEA [90% CI]" %in% names(apa_table(s)))
+  expect_true("BRMSEA [90% HDI]" %in% names(apa_table(s)))
+})
+
+test_that("mixed rmsea levels move the level into the cells", {
+  m <- sem_fit_mixed_level()
+  row <- as.data.frame(m)
+  tab <- apa_table(m)
+  expect_true("RMSEA [CI]" %in% names(tab))
+  expect_identical(
+    tab[["RMSEA [CI]"]],
+    index_interval_cell(
+      row$rmsea, row$rmsea_low, row$rmsea_high,
+      prefix = c("90% ", "95% ")
+    )
+  )
+  assert_table_contract(tab)
+})
+
+test_that("ci_label overrides the bracketed labels", {
+  tab <- apa_table(fixture("sem_fit_blavaan"), ci_label = "CrI")
+  expect_true("BRMSEA [90% CrI]" %in% names(tab))
+  assert_table_contract(tab)
+})
+
+# ---- sem_fit: note ---------------------------------------------------------
+
+test_that("the lavaan sem_fit note defines the four indices and the interval", {
+  note <- apa_note(apa_table(lavaan_sem_fit()))
+  expect_identical(
+    note,
+    paste0(
+      "CFI = comparative fit index; TLI = Tucker–Lewis index; ",
+      "RMSEA = root mean square error of approximation, with its 90% ",
+      "confidence interval; SRMR = standardized root mean square residual."
+    )
+  )
+  expect_no_match(note, "χ", fixed = TRUE)
+})
+
+test_that("the blavaan sem_fit note defines the Bayesian indices", {
+  note <- apa_note(apa_table(fixture("sem_fit_blavaan")))
+  expect_identical(
+    note,
+    paste0(
+      "PPP = posterior predictive *p*-value; BRMSEA = Bayesian root mean ",
+      "square error of approximation, with its 90% highest density interval; ",
+      "BΓ̂ = Bayesian gamma-hat, with its 90% highest density interval."
+    )
+  )
+})
+
+test_that("interval = FALSE drops the interval phrase from the note", {
+  note <- apa_note(apa_table(lavaan_sem_fit(), interval = FALSE))
+  expect_match(note, "RMSEA = root mean square error of approximation;",
+    fixed = TRUE
+  )
+  expect_no_match(note, "with its", fixed = TRUE)
+})
+
+test_that("a Bayesian index built with a bare NA ci_method still tabulates", {
+  # The constructor canonicalises `ci_method`: a logical NA used as a
+  # subscript into a named character vector recycles across the whole
+  # vector, which made this table abort before the attribute was stored
+  # as NA_character_.
+  x <- apabayes_tidy(
+    data.frame(
+      model = "M", brmsea = 0.09, brmsea_low = 0.07, brmsea_high = 0.12
+    ),
+    type = "sem_fit", centrality = NA, ci_method = NA, ci_level = NA
+  )
+  expect_identical(attr(x, "ci_method", exact = TRUE), NA_character_)
+  tab <- apa_table(x)
+  # No level is recorded, so none is printed: not `NA%`.
+  expect_identical(names(tab), c("Model", "BRMSEA [Interval]"))
+  expect_no_match(apa_note(tab), "with its", fixed = TRUE)
+  assert_table_contract(tab)
+})
+
+test_that("a Bayesian index with no ci_method gets no interval phrase", {
+  x <- fixture("sem_fit_blavaan")
+  attr(x, "ci_method") <- NA_character_
+  note <- apa_note(apa_table(x))
+  expect_match(
+    note, "BRMSEA = Bayesian root mean square error of approximation;",
+    fixed = TRUE
+  )
+  expect_no_match(note, "with its", fixed = TRUE)
+  # The bracket still names the level, which the table does record.
+  expect_true("BRMSEA [90% Interval]" %in% names(apa_table(x)))
+})
+
+test_that("a renamed RMSEA label keeps the note's own description", {
+  # The label is the user's; the description follows the interval, as on
+  # a parameters table.
+  tab <- apa_table(lavaan_sem_fit(), ci_label = "Bounds")
+  expect_true("RMSEA [90% Bounds]" %in% names(tab))
+  expect_match(apa_note(tab), "with its 90% confidence interval", fixed = TRUE)
+  assert_table_contract(tab)
+})
+
+# ---- contrasts -------------------------------------------------------------
+
+test_that("a contrasts table shows contrast, estimate, interval, pd and ROPE", {
+  x <- apa_tidy(fixture("mb_contrasts"))
+  row <- as.data.frame(x)
+  tab <- apa_table(x)
+  expect_identical(
+    names(tab), c("Contrast", "*Mdn*", "95% CrI", "*pd*", "% in ROPE")
+  )
+  expect_identical(tab[["Contrast"]], row$contrast)
+  expect_identical(tab[["*Mdn*"]], num_cell(row$estimate))
+  expect_identical(tab[["95% CrI"]], ci_cell(row$ci_low, row$ci_high))
+  expect_identical(tab[["*pd*"]], pd_cell(row$pd))
+  expect_identical(tab[["% in ROPE"]], rope_cell(row$rope_pct))
+  assert_table_contract(tab)
+})
+
+test_that("contrasts: Group appears only when some row has one", {
+  x <- apa_tidy(fixture("mb_contrasts_by"))
+  tab <- apa_table(x)
+  expect_identical(names(tab)[1:2], c("Contrast", "Group"))
+  expect_identical(tab[["Group"]], as.data.frame(x)$group)
+  expect_false("Group" %in% names(apa_table(apa_tidy(fixture("mb_contrasts")))))
+  assert_table_contract(tab)
+})
+
+test_that("the emmGrid contrasts table is headed 95% HDI and has no ROPE", {
+  x <- contrasts_no_rope()
+  tab <- apa_table(x)
+  expect_identical(names(tab), c("Contrast", "*Mdn*", "95% HDI", "*pd*"))
+  expect_false("% in ROPE" %in% names(tab))
+  assert_table_contract(tab)
+})
+
+test_that("contrasts: NA centrality gives Estimate; stats subsets", {
+  x <- contrasts_no_rope()
+  attr(x, "centrality") <- NA_character_
+  expect_identical(names(apa_table(x))[2], "Estimate")
+  only_pd <- apa_table(apa_tidy(fixture("mb_contrasts")), stats = "pd")
+  expect_identical(
+    names(only_pd), c("Contrast", "*Mdn*", "95% CrI", "*pd*")
+  )
+  bare <- apa_table(apa_tidy(fixture("mb_contrasts")), stats = character())
+  expect_identical(names(bare), c("Contrast", "*Mdn*", "95% CrI"))
+  assert_table_contract(only_pd)
+  assert_table_contract(bare)
+})
+
+test_that("the contrasts note defines the estimate, interval, pd and ROPE", {
+  note <- apa_note(apa_table(apa_tidy(fixture("mb_contrasts"))))
+  expect_identical(
+    note,
+    paste0(
+      "*Mdn* = posterior median; CrI = equal-tailed credible interval; ",
+      "*pd* = probability of direction; % in ROPE = percentage of the 95% ",
+      "posterior interval inside the region of practical equivalence ",
+      "[−0.10, 0.10]."
+    )
+  )
+  expect_no_match(note, "standardized", fixed = TRUE)
+})
+
+test_that("group_rows aborts on a contrasts table", {
+  expect_error(
+    apa_table(contrasts_no_rope(), group_rows = TRUE),
+    regexp = "contrasts"
+  )
+})
+
+# ---- correlations ----------------------------------------------------------
+
+test_that("a correlations table names its pair in two columns", {
+  x <- apa_tidy(fixture("cor_default"))
+  row <- as.data.frame(x)
+  tab <- apa_table(x)
+  expect_identical(
+    names(tab),
+    c("Variable 1", "Variable 2", "*r*", "95% HDI", "*pd*", "*BF*~10~", "*n*")
+  )
+  expect_identical(tab[["Variable 1"]], row$var1)
+  expect_identical(tab[["Variable 2"]], row$var2)
+  expect_identical(tab[["*r*"]], num_cell(row$estimate, leading_zero = FALSE))
+  expect_identical(
+    tab[["95% HDI"]],
+    ci_cell(row$ci_low, row$ci_high, leading_zero = FALSE)
+  )
+  expect_identical(tab[["*pd*"]], pd_cell(row$pd))
+  expect_identical(tab[["*BF*~10~"]], bf_cell(row$bf))
+  expect_identical(tab[["*n*"]], n_cell(row$n))
+  assert_table_contract(tab)
+})
+
+test_that("correlations: the default drops pd and ROPE when they are NA", {
+  x <- apa_tidy(fixture("cor_bf"))
+  tab <- apa_table(x)
+  expect_identical(
+    names(tab),
+    c("Variable 1", "Variable 2", "*r*", "95% HDI", "*BF*~10~", "*n*")
+  )
+  expect_false("*pd*" %in% names(tab))
+  expect_false("% in ROPE" %in% names(tab))
+  assert_table_contract(tab)
+})
+
+test_that("correlations: n differs between rows and Group is shown", {
+  na <- apa_tidy(fixture("cor_na"))
+  tab <- apa_table(na)
+  expect_identical(tab[["*n*"]], n_cell(as.data.frame(na)$n))
+  expect_false(length(unique(tab[["*n*"]])) == 1)
+  grouped <- apa_tidy(fixture("cor_grouped"))
+  g <- apa_table(grouped)
+  expect_identical(names(g)[1:3], c("Variable 1", "Variable 2", "Group"))
+  expect_identical(g[["Group"]], as.data.frame(grouped)$group)
+  assert_table_contract(tab)
+  assert_table_contract(g)
+})
+
+test_that("correlations drop the leading zero and follow bf_direction", {
+  x <- apa_tidy(fixture("cor_default"))
+  row <- as.data.frame(x)
+  tab <- apa_table(x)
+  expect_false(any(grepl("^-?0\\.", tab[["*r*"]])))
+  forced <- apa_table(x, leading_zero = TRUE)
+  expect_identical(forced[["*r*"]], num_cell(row$estimate, leading_zero = TRUE))
+  one <- apa_table(x, bf_direction = "01")
+  expect_true("*BF*~01~" %in% names(one))
+  expect_identical(one[["*BF*~01~"]], bf_cell(row$bf, "01"))
+  assert_table_contract(forced)
+  assert_table_contract(one)
+})
+
+test_that("correlations: stats subsets and rope column", {
+  x <- apa_tidy(fixture("cor_default"))
+  rope <- apa_table(x, stats = c("pd", "rope"))
+  expect_identical(
+    names(rope),
+    c("Variable 1", "Variable 2", "*r*", "95% HDI", "*pd*", "% in ROPE")
+  )
+  bare <- apa_table(x, stats = character())
+  expect_identical(names(bare), c("Variable 1", "Variable 2", "*r*", "95% HDI"))
+  assert_table_contract(rope)
+  assert_table_contract(bare)
+})
+
+test_that("the correlations note names the method and the n", {
+  note <- apa_note(apa_table(apa_tidy(fixture("cor_default"))))
+  expect_identical(
+    note,
+    paste0(
+      "*r* = Bayesian Pearson correlation; HDI = highest density interval; ",
+      "*pd* = probability of direction; *BF*~10~ = Bayes factor of the ",
+      "alternative over the null hypothesis; *n* = number of complete pairs."
+    )
+  )
+})
+
+test_that("two methods join with `or`; no method gives no definition", {
+  two <- apa_note(apa_table(correlations_two_methods()))
+  expect_match(
+    two,
+    "*r* = Bayesian Pearson correlation or Bayesian Spearman correlation;",
+    fixed = TRUE
+  )
+  none <- apa_note(apa_table(correlations_no_method()))
+  expect_no_match(none, "*r* =", fixed = TRUE)
+  # A table that has the column but records nothing in it says no more
+  # than one that has no column at all.
+  all_na <- correlations_two_methods()
+  all_na$method <- NA_character_
+  expect_no_match(apa_note(apa_table(all_na)), "*r* =", fixed = TRUE)
+})
+
+test_that("the correlations ROPE definition has neither level nor range", {
+  # The correlation route records no rope_ci and no rope_range (M8).
+  note <- apa_note(apa_table(apa_tidy(fixture("cor_default")),
+    stats = c("pd", "rope")
+  ))
+  expect_match(
+    note,
+    "% in ROPE = percentage of the posterior interval inside the region of practical equivalence.", # nolint: line_length_linter.
+    fixed = TRUE
+  )
+})
+
+test_that("group_rows aborts on a sem_fit and a correlations table", {
+  expect_error(
+    apa_table(fixture("sem_fit_blavaan"), group_rows = TRUE),
+    regexp = "sem_fit"
+  )
+  expect_error(
+    apa_table(correlations_stub(), group_rows = TRUE),
+    regexp = "correlations"
+  )
+})
+
+# ---- slice 3 default method ------------------------------------------------
+
+test_that("the default method reaches the three new types", {
+  cor_direct <- apa_table(fixture("cor_default"))
+  expect_identical(cor_direct, apa_table(apa_tidy(fixture("cor_default"))))
+  grid <- test_emm_grid("pairs")
+  expect_identical(
+    apa_table(grid, ci = "eti"), apa_table(apa_tidy(grid, ci = "eti"))
+  )
+  assert_table_contract(cor_direct)
+})
+
+test_that("no slice 3 table shows a verdict word", {
+  tabs <- list(
+    apa_table(lavaan_sem_fit()),
+    apa_table(fixture("sem_fit_blavaan")),
+    apa_table(apa_tidy(fixture("mb_contrasts"))),
+    apa_table(apa_tidy(fixture("cor_default")))
+  )
+  for (tab in tabs) {
+    note <- attr(tab, "note", exact = TRUE)
+    expect_false(any(vapply(decision_words, function(w) {
+      any(grepl(w, c(unlist(tab), note), ignore.case = TRUE))
+    }, logical(1))))
+  }
 })

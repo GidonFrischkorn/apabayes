@@ -13,7 +13,10 @@ table_parts <- function(x, opts) {
     hypotheses = table_hypotheses(x, opts),
     loo = table_loo(x, opts),
     bf_models = table_bf_models(x, opts),
-    bf_inclusion = table_bf_inclusion(x, opts)
+    bf_inclusion = table_bf_inclusion(x, opts),
+    sem_fit = table_sem_fit(x, opts),
+    contrasts = table_contrasts(x, opts),
+    correlations = table_correlations(x, opts)
   )
 }
 
@@ -69,8 +72,23 @@ table_note <- function(definitions, sentences = NULL) {
   )
 }
 
+# The header label, which is the inline layer's except for the three
+# labels that would read `CI` (S3-1). apa7 strips a leading `<digits>% `
+# and then matches its own format names, so `95% CI` is a column it
+# re-formats (slice-3 measured M1); naming the method keeps the header
+# safe and tells the reader which interval it is. The inline layer keeps
+# `CI`: apa7 never sees running text.
+table_ci_label_of <- function(method) {
+  label <- ci_label_of(method)
+  frequentist <- c(wald = "CI (Wald)", boot = "CI (bootstrap)")
+  named <- unname(frequentist[method])
+  label[!is.na(named)] <- named[!is.na(named)]
+  label[is.na(method)] <- "Interval"
+  label
+}
+
 # What each interval method is, for the note; the header label comes
-# from ci_label_of(), as in the inline layer.
+# from table_ci_label_of().
 ci_meanings <- function() {
   c(
     eti = "equal-tailed credible interval",
@@ -102,7 +120,7 @@ table_interval <- function(x, leading_zero, opts) {
   )
   auto <- identical(opts$ci_label, "auto")
   label <- if (auto) {
-    ci_label_of(x$ci_method)
+    table_ci_label_of(x$ci_method)
   } else {
     rep(opts$ci_label, nrow(x))
   }
@@ -111,18 +129,13 @@ table_interval <- function(x, leading_zero, opts) {
   mixed_level <- length(unique(x$ci_level[bounded])) > 1
   mixed_method <- auto && length(unique(x$ci_method[bounded])) > 1
   first <- which(bounded)[1]
-  # A label standing alone as the header must not be a column name apa7
-  # formats itself: bare `CI` makes apa_flextable() abort (measured). An
-  # automatic label then moves into the cells, as a mixed method does; a
-  # user's `ci_label` is refused by check_table_headers().
-  alone <- mixed_level || !nzchar(level[first])
-  if (auto && alone && label[first] %in% names(apa7::column_formats())) {
-    mixed_method <- TRUE
-  }
   header <- paste0(
     if (mixed_level) "" else level[first],
     if (mixed_method) "Interval" else label[first]
   )
+  if (!auto) {
+    check_ci_label_header(header)
+  }
   prefix <- paste0(
     if (mixed_level) level else "",
     if (mixed_method) paste0(label, " ") else ""

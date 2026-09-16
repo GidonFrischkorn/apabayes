@@ -159,8 +159,20 @@ denominator of a Bayes factor, states that the estimates are
 standardized when every row is, and on a diagnostics table counts the
 divergent transitions. Nothing printed judges the result.
 
-Fit indices, contrasts and correlations are not tabulated yet:
-\code{apa_table()} refuses them by name, and \code{\link[=apa_inline]{apa_inline()}} reports them.
+A \code{sem_fit} table has one row per model: \code{Model} when any row names
+one, then \verb{*χ*^2^}, \verb{*df*}, \verb{*p*} and the fit indices the table
+records, each index whose interval it records carrying that interval
+in the cell (\verb{RMSEA [90\% CI]}, \code{.092 [.071, .114]}). A \code{contrasts}
+table has \code{Contrast}, \code{Group} when the contrasts were computed within
+one, the estimate and its interval, \verb{*pd*} and \verb{\% in ROPE}. A
+\code{correlations} table names each pair in \verb{Variable 1} and \verb{Variable 2},
+then \verb{*r*}, its interval, \verb{*pd*}, \verb{*BF*~10~} and the pairwise \verb{*n*},
+which can differ between rows.
+
+A frequentist interval is headed \verb{95\% CI (Wald)} or
+\verb{95\% CI (bootstrap)} rather than \verb{95\% CI}, which apa7 reads as a
+column of its own to format; \code{\link[=apa_inline]{apa_inline()}} still writes \verb{95\% CI} in
+running text.
 }
 
 \section{Rendering in apaquarto}{
@@ -249,6 +261,37 @@ bfm <- apabayes_tidy(
 )
 apa_table(bfm)
 apa_note(apa_table(bfm))
+
+# Fit indices: one row per model, each index carrying its interval in
+# the cell.
+fits <- apabayes_tidy(
+  data.frame(
+    model = c("One factor", "Two factors"),
+    chisq = c(85.31, 24.02), df = c(24, 19), p = c(8.5e-09, 0.196),
+    cfi = c(0.931, 0.994), tli = c(0.896, 0.991),
+    rmsea = c(0.092, 0.030), rmsea_low = c(0.071, 0.000),
+    rmsea_high = c(0.114, 0.061), rmsea_level = c(0.90, 0.90),
+    srmr = c(0.065, 0.031)
+  ),
+  type = "sem_fit", centrality = NA, ci_method = NA, ci_level = NA
+)
+apa_table(fits)
+apa_note(apa_table(fits))
+
+# Correlations: each pair named in two columns, with the pairwise n.
+cors <- apabayes_tidy(
+  data.frame(
+    term = c("mpg~~wt", "mpg~~hp"), var1 = c("mpg", "mpg"),
+    var2 = c("wt", "hp"), estimate = c(-0.82, -0.70),
+    ci_low = c(-0.92, -0.84), ci_high = c(-0.66, -0.51),
+    pd = c(1, 1), bf = c(1.3e7, 3.9e4), n = c(32, 32),
+    method = "Bayesian Pearson correlation"
+  ),
+  type = "correlations", centrality = "median", ci_method = "hdi",
+  ci_level = 0.95
+)
+apa_table(cors)
+apa_note(apa_table(cors))
 \dontshow{if (rlang::is_installed("lavaan")) withAutoprint(\{ # examplesIf}
 hs <- lavaan::HolzingerSwineford1939
 fit <- lavaan::cfa("visual =~ x1 + x2 + x3", hs)
