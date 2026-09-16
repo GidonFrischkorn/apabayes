@@ -33,7 +33,7 @@ ci_cell <- function(lo, hi, digits = 2, leading_zero = TRUE) {
     apa_num(hi[i], digits, leading_zero[i], markup = "md")
   }, character(1))
   out <- paste0(
-    "[",
+    "\u2060[",
     apa7::align_chr(
       paste0(apa7::align_chr(lo_s), ", ", apa7::align_chr(hi_s)),
       center = ", "
@@ -427,8 +427,8 @@ test_that("mixed levels drop the level from the header and prefix cells", {
   tab <- apa_table(mixed_levels_table())
   expect_true("CrI" %in% names(tab))
   cells <- tab[["CrI"]]
-  expect_match(cells[1], "^90% \\[", perl = TRUE)
-  expect_match(cells[2], "^95% \\[", perl = TRUE)
+  expect_match(cells[1], "^90% \u2060\\[", perl = TRUE)
+  expect_match(cells[2], "^95% \u2060\\[", perl = TRUE)
   assert_table_contract(tab)
 })
 
@@ -437,15 +437,15 @@ test_that("mixed methods read Interval and prefix cells with their own label", {
   tab <- apa_table(mixed_methods_table())
   expect_true("95% Interval" %in% names(tab))
   cells <- tab[["95% Interval"]]
-  expect_match(cells[1], "^CrI \\[", perl = TRUE)
-  expect_match(cells[2], "^HDI \\[", perl = TRUE)
+  expect_match(cells[1], "^CrI \u2060\\[", perl = TRUE)
+  expect_match(cells[2], "^HDI \u2060\\[", perl = TRUE)
   assert_table_contract(tab)
   both <- mixed_methods_table()
   both$ci_level <- c(0.90, 0.95)
   tab2 <- apa_table(both)
   expect_true("Interval" %in% names(tab2))
-  expect_match(tab2[["Interval"]][1], "^90% CrI \\[", perl = TRUE)
-  expect_match(tab2[["Interval"]][2], "^95% HDI \\[", perl = TRUE)
+  expect_match(tab2[["Interval"]][1], "^90% CrI \u2060\\[", perl = TRUE)
+  expect_match(tab2[["Interval"]][2], "^95% HDI \u2060\\[", perl = TRUE)
   assert_table_contract(tab2)
 })
 
@@ -791,14 +791,14 @@ test_that("an automatic CI label never stands alone as a header", {
   x$ci_method <- c("wald", "wald")
   tab <- apa_table(x)
   expect_true("CI (Wald)" %in% names(tab))
-  expect_match(tab[["CI (Wald)"]][1], "^90% \\[", perl = TRUE)
-  expect_match(tab[["CI (Wald)"]][2], "^95% \\[", perl = TRUE)
+  expect_match(tab[["CI (Wald)"]][1], "^90% \u2060\\[", perl = TRUE)
+  expect_match(tab[["CI (Wald)"]][2], "^95% \u2060\\[", perl = TRUE)
   assert_table_contract(tab)
   none <- x
   none$ci_level <- NA_real_
   tab2 <- apa_table(none)
   expect_true("CI (Wald)" %in% names(tab2))
-  expect_match(tab2[["CI (Wald)"]][1], "^\\[", perl = TRUE)
+  expect_match(tab2[["CI (Wald)"]][1], "^\u2060\\[", perl = TRUE)
   assert_table_contract(tab2)
 })
 
@@ -2063,7 +2063,7 @@ test_that("a lavaan sem_fit table shows the frequentist indices in order", {
   tab <- apa_table(f)
   expect_identical(
     names(tab),
-    c("*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA [90% CI]", "SRMR")
+    c("*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA \u2060[90% CI]", "SRMR")
   )
   expect_identical(tab[["*χ*^2^"]], num_cell(row$chisq, 2))
   expect_identical(tab[["*df*"]], num_cell(row$df, 0))
@@ -2072,7 +2072,7 @@ test_that("a lavaan sem_fit table shows the frequentist indices in order", {
   expect_identical(tab[["TLI"]], index_cell(row$tli))
   expect_identical(tab[["SRMR"]], index_cell(row$srmr))
   expect_identical(
-    tab[["RMSEA [90% CI]"]],
+    tab[["RMSEA \u2060[90% CI]"]],
     index_interval_cell(row$rmsea, row$rmsea_low, row$rmsea_high)
   )
   assert_table_contract(tab)
@@ -2084,16 +2084,16 @@ test_that("a blavaan sem_fit table shows the Bayesian indices", {
   tab <- apa_table(b)
   expect_identical(
     names(tab),
-    c("Model", "PPP", "BRMSEA [90% HDI]", "BΓ̂ [90% HDI]")
+    c("Model", "PPP", "BRMSEA \u2060[90% HDI]", "BΓ̂ \u2060[90% HDI]")
   )
   expect_identical(tab[["Model"]], row$model)
   expect_identical(tab[["PPP"]], index_cell(row$ppp))
   expect_identical(
-    tab[["BRMSEA [90% HDI]"]],
+    tab[["BRMSEA \u2060[90% HDI]"]],
     index_interval_cell(row$brmsea, row$brmsea_low, row$brmsea_high)
   )
   expect_identical(
-    tab[["BΓ̂ [90% HDI]"]],
+    tab[["BΓ̂ \u2060[90% HDI]"]],
     index_interval_cell(row$bgammahat, row$bgammahat_low, row$bgammahat_high)
   )
   assert_table_contract(tab)
@@ -2105,14 +2105,14 @@ test_that("a stacked table shows both index families with empty cells", {
   expect_identical(
     names(tab),
     c(
-      "Model", "*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA [90% CI]",
-      "SRMR", "PPP", "BRMSEA [90% HDI]", "BΓ̂ [90% HDI]"
+      "Model", "*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA \u2060[90% CI]",
+      "SRMR", "PPP", "BRMSEA \u2060[90% HDI]", "BΓ̂ \u2060[90% HDI]"
     )
   )
   expect_identical(tab[["Model"]], c("One factor", "Two factors"))
   expect_identical(tab[["CFI"]][2], "")
   expect_identical(tab[["PPP"]][1], "")
-  expect_identical(tab[["RMSEA [90% CI]"]][2], "")
+  expect_identical(tab[["RMSEA \u2060[90% CI]"]][2], "")
   assert_table_contract(tab)
 })
 
@@ -2193,17 +2193,17 @@ test_that("interval = FALSE drops the bracket from header and cell", {
 
 test_that("RMSEA is labelled CI even when the table's ci_method is hdi", {
   s <- stacked_sem_fit()
-  expect_true("RMSEA [90% CI]" %in% names(apa_table(s)))
-  expect_true("BRMSEA [90% HDI]" %in% names(apa_table(s)))
+  expect_true("RMSEA \u2060[90% CI]" %in% names(apa_table(s)))
+  expect_true("BRMSEA \u2060[90% HDI]" %in% names(apa_table(s)))
 })
 
 test_that("mixed rmsea levels move the level into the cells", {
   m <- sem_fit_mixed_level()
   row <- as.data.frame(m)
   tab <- apa_table(m)
-  expect_true("RMSEA [CI]" %in% names(tab))
+  expect_true("RMSEA \u2060[CI]" %in% names(tab))
   expect_identical(
-    tab[["RMSEA [CI]"]],
+    tab[["RMSEA \u2060[CI]"]],
     index_interval_cell(
       row$rmsea, row$rmsea_low, row$rmsea_high,
       prefix = c("90% ", "95% ")
@@ -2214,7 +2214,7 @@ test_that("mixed rmsea levels move the level into the cells", {
 
 test_that("ci_label overrides the bracketed labels", {
   tab <- apa_table(fixture("sem_fit_blavaan"), ci_label = "CrI")
-  expect_true("BRMSEA [90% CrI]" %in% names(tab))
+  expect_true("BRMSEA \u2060[90% CrI]" %in% names(tab))
   assert_table_contract(tab)
 })
 
@@ -2267,7 +2267,7 @@ test_that("a Bayesian index built with a bare NA ci_method still tabulates", {
   expect_identical(attr(x, "ci_method", exact = TRUE), NA_character_)
   tab <- apa_table(x)
   # No level is recorded, so none is printed: not `NA%`.
-  expect_identical(names(tab), c("Model", "BRMSEA [Interval]"))
+  expect_identical(names(tab), c("Model", "BRMSEA \u2060[Interval]"))
   expect_no_match(apa_note(tab), "with its", fixed = TRUE)
   assert_table_contract(tab)
 })
@@ -2282,14 +2282,14 @@ test_that("a Bayesian index with no ci_method gets no interval phrase", {
   )
   expect_no_match(note, "with its", fixed = TRUE)
   # The bracket still names the level, which the table does record.
-  expect_true("BRMSEA [90% Interval]" %in% names(apa_table(x)))
+  expect_true("BRMSEA \u2060[90% Interval]" %in% names(apa_table(x)))
 })
 
 test_that("a renamed RMSEA label keeps the note's own description", {
   # The label is the user's; the description follows the interval, as on
   # a parameters table.
   tab <- apa_table(lavaan_sem_fit(), ci_label = "Bounds")
-  expect_true("RMSEA [90% Bounds]" %in% names(tab))
+  expect_true("RMSEA \u2060[90% Bounds]" %in% names(tab))
   expect_match(apa_note(tab), "with its 90% confidence interval", fixed = TRUE)
   assert_table_contract(tab)
 })
@@ -2514,4 +2514,77 @@ test_that("no slice 3 table shows a verdict word", {
       any(grepl(w, c(unlist(tab), note), ignore.case = TRUE))
     }, logical(1))))
   }
+})
+
+# ---- Milestone 5: the word joiner before every bracket --------------------
+
+# apa7 writes each run of a cell as `\fontspec{Times New Roman} <text>`, and
+# fontspec takes `\fontspec{font}[options]`, so a run whose text begins with
+# `[` loses the interval: silently when the brackets balance, and as
+# `! Argument of \fontspec has an extra }.` when they do not. U+2060 WORD
+# JOINER before the `[` ends fontspec's scan. Measured by the Milestone 5
+# render probe, whose log is kept with the other session 31 probe logs.
+wj <- "\u2060"
+
+test_that("every interval cell opens its bracket with a word joiner", {
+  tabs <- list(
+    parameters = apa_table(fixture("tidy_brms_full")),
+    hypotheses = apa_table(fixture("tidy_hypotheses")),
+    contrasts = apa_table(apa_tidy(fixture("mb_contrasts"))),
+    correlations = apa_table(apa_tidy(fixture("cor_default")))
+  )
+  for (type in names(tabs)) {
+    tab <- tabs[[type]]
+    col <- grep("(CrI|CI|HDI|Interval)", names(tab), value = TRUE)
+    expect_length(col, 1)
+    cells <- tab[[col]][nzchar(tab[[col]])]
+    # Never a bare `[`: every bracket in the cell is preceded by the joiner.
+    expect_false(any(grepl("(^|[^\u2060])\\[", cells)), info = type)
+    expect_true(all(grepl(paste0(wj, "["), cells, fixed = TRUE)), info = type)
+  }
+})
+
+test_that("the sem_fit cell and its bracketed header both carry it", {
+  tab <- apa_table(fixture("sem_fit_blavaan"))
+  bracketed <- grep("\\[", names(tab), value = TRUE)
+  expect_gt(length(bracketed), 0)
+  for (nm in bracketed) {
+    expect_false(grepl("(^|[^\u2060])\\[", nm), info = nm)
+    cells <- tab[[nm]][nzchar(tab[[nm]])]
+    expect_false(any(grepl("(^|[^\u2060])\\[", cells)), info = nm)
+  }
+})
+
+test_that("a level or label prefix still leaves the bracket joined", {
+  # The prefix is what makes the joiner belong to the bracket rather than
+  # the cell: `90% [...]` would otherwise put `[` at the head of its own run.
+  mixed <- apabayes_tidy(
+    data.frame(
+      term = c("a", "b"), label = c("a", "b"), estimate = c(1, 2),
+      ci_low = c(0.5, 1.5), ci_high = c(1.5, 2.5),
+      ci_method = c("hdi", "hdi"), ci_level = c(0.9, 0.95)
+    ),
+    type = "parameters", centrality = "median"
+  )
+  cells <- apa_table(mixed)[["HDI"]]
+  expect_true(all(grepl("^9[05]% \u2060\\[", cells)))
+})
+
+test_that("the cell is otherwise exactly what it was", {
+  # Strip the joiner and the committed spelling comes back, ASCII space and
+  # all: the separator never changed.
+  tab <- apa_table(fixture("tidy_brms_full"))
+  cells <- tab[["95% CrI"]]
+  bare <- gsub(wj, "", cells, fixed = TRUE)
+  expect_true(all(grepl("^\\[.*, .*\\]$", bare[nzchar(bare)])))
+  expect_length(unique(nchar(cells[nzchar(cells)])), 1L)
+})
+
+test_that("apa_inline and the note keep plain brackets", {
+  # Neither is a flextable cell, so neither meets fontspec.
+  s <- apa_inline(fixture("tidy_brms_full"), "wt")$full_result
+  expect_false(grepl(wj, s, fixed = TRUE))
+  expect_true(grepl("[", s, fixed = TRUE))
+  note <- apa_note(apa_table(apa_tidy(fixture("mb_contrasts")), stats = "rope"))
+  expect_false(grepl(wj, note, fixed = TRUE))
 })

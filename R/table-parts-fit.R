@@ -19,6 +19,9 @@
 # format name only on a whole header or one ending in `<digits>% CI`
 # (slice-3 measured M1) — neither of which a compound header can be.
 # `_` in a label is still caught by check_table_headers().
+#
+# The bounds carry the same `,` + U+00A0 separator as every other interval
+# cell, and for the same reason (see table_interval()).
 index_interval <- function(value, lo, hi, level, label, digits, opts) {
   bounded <- !is.na(lo) & !is.na(hi)
   cells <- align_cells(apa_num(value, digits, FALSE, markup = "md"))
@@ -36,11 +39,14 @@ index_interval <- function(value, lo, hi, level, label, digits, opts) {
   mixed <- length(shared) > 1
   # A level no row records is left out, as on every other interval.
   prefix <- if (mixed) level_prefix(level) else ""
-  brackets <- paste0(prefix, "[", bounds, "]")
+  brackets <- paste0(prefix, "\u2060[", bounds, "]")
   out <- paste0(cells, " ", brackets)
   out[!bounded] <- cells[!bounded]
   out[is.na(value)] <- ""
-  suffix <- paste0(" [", if (mixed) "" else level_prefix(shared), label, "]")
+  # The header's bracket needs the same word joiner as the cell's: apa7
+  # splits a header at spaces too, so `[90%` would lead its own run.
+  inner <- paste0(if (mixed) "" else level_prefix(shared), label)
+  suffix <- paste0(" \u2060[", inner, "]")
   list(suffix = suffix, cells = out, level = if (mixed) NA_real_ else shared)
 }
 

@@ -73,11 +73,12 @@ table_note <- function(definitions, sentences = NULL) {
 }
 
 # The header label, which is the inline layer's except for the three
-# labels that would read `CI` (S3-1). apa7 strips a leading `<digits>% `
-# and then matches its own format names, so `95% CI` is a column it
-# re-formats (slice-3 measured M1); naming the method keeps the header
-# safe and tells the reader which interval it is. The inline layer keeps
-# `CI`: apa7 never sees running text.
+# labels that would read `CI` (S3-1). apa7 matches its own format names
+# exactly, and matches an interval column by shape as well — anything
+# ending in `<digits>% CI` — so `95% CI` is a column it re-formats
+# (slice-3 measured M1); naming the method keeps the header safe and
+# tells the reader which interval it is. The inline layer keeps `CI`:
+# apa7 never sees running text.
 table_ci_label_of <- function(method) {
   label <- ci_label_of(method)
   frequentist <- c(wald = "CI (Wald)", boot = "CI (bootstrap)")
@@ -108,6 +109,17 @@ ci_meanings <- function() {
 # level they disagree on moves into each cell (`90% [...]`), a method
 # they disagree on puts each cell's label there (`HDI [...]`) under
 # `<level>% Interval`, and a level no row records is left out.
+#
+# Every bracket opens with U+2060 WORD JOINER. apa7 writes each run of a
+# cell as `\fontspec{Times New Roman} <text>`, and fontspec takes
+# `\fontspec{font}[options]`, so a run whose text begins with `[` has the
+# interval eaten as a font option list: silently when the brackets balance,
+# and as `! Argument of \fontspec has an extra }.` when a split leaves them
+# unbalanced. An invisible character before the `[` ends the scan. The
+# joiner goes on the bracket rather than the cell, because a level or
+# label prefix would otherwise leave the bracket leading its own run again
+# (Milestone 5 amendment, measured in local/probes/probe_quarto_m5b.log).
+# Notes keep their plain brackets: a note is prose, not a cell.
 table_interval <- function(x, leading_zero, opts) {
   bounded <- !is.na(x$ci_low) & !is.na(x$ci_high)
   if (!opts$interval || !any(bounded)) {
@@ -116,7 +128,7 @@ table_interval <- function(x, leading_zero, opts) {
   lo <- align_cells(table_num(x$ci_low, opts$digits, leading_zero))
   hi <- align_cells(table_num(x$ci_high, opts$digits, leading_zero))
   cells <- paste0(
-    "[", align_cells(paste0(lo, ", ", hi), center = ", "), "]"
+    "\u2060[", align_cells(paste0(lo, ", ", hi), center = ", "), "]"
   )
   auto <- identical(opts$ci_label, "auto")
   label <- if (auto) {

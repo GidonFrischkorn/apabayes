@@ -1,5 +1,17 @@
 # apabayes 0.0.0.9000
 
+* fix: every bracket a table prints opens with a word joiner (U+2060), so
+  an apaquarto PDF renders its intervals. apa7 writes each run of a cell
+  as `\fontspec{Times New Roman} <text>`, and fontspec reads
+  `\fontspec{font}[options]`, so a run beginning with `[` had the interval
+  taken for a font option list: silently where the brackets balanced, and
+  as `! Argument of \fontspec has an extra }.` where a split left them
+  unbalanced. Either way the interval was lost, in every table that has
+  one. The joiner is invisible, sits on the bracket rather than the cell
+  so that a level or label prefix cannot strand it, and changes nothing
+  else: the bounds keep their `, `, the columns keep their widths. Notes
+  and `apa_inline()` keep plain brackets, being prose rather than cells.
+
 * feat: `apa_table()` reports the last three contract types, so every
   table `apa_tidy()` produces can be tabulated. A `sem_fit` table has one
   row per model: `Model` when any row names one, then `*χ*^2^`, `*df*`
