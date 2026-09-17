@@ -1,5 +1,19 @@
 # apabayes 0.1.0
 
+* feat: `apa_tidy()` on a `loo::loo_compare()` result takes
+  `reference =`, the model the ELPD differences are taken from. loo signs
+  every difference against the model with the highest ELPD, so a sentence
+  reporting how far a baseline trails had to flip the sign by hand; under
+  a new reference the model loo referenced prints a positive `ΔELPD`.
+  Naming loo's own reference changes nothing — measured, re-deriving the
+  differences moves them by up to 1.2e-14, and loo's numbers are the ones
+  to report. The standard errors that survive are the ones loo measured:
+  `0` on the reference row, loo's own `se_diff` on the model that was
+  loo's reference (the same pair, read the other way round), `NA`
+  elsewhere, because a `compare.loo` object does not carry the pointwise
+  ELPDs another pair would need. `p_worse` and `diag_diff` qualify a
+  difference against loo's reference and become `NA` for the same reason.
+
 * feat: `apa_inline(ci_label = NULL)` drops the separator with the label,
   so an estimate and its interval print as `−5.39 [−6.95, −3.78]` — the
   shape a sentence listing several estimates needs, and the one

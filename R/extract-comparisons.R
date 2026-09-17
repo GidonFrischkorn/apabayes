@@ -334,15 +334,37 @@ hypothesis_centrality <- function(hyp, samples) {
 #'   must name exactly the models of `x`. The comparison object carries
 #'   no weights; `performance::compare_performance()`'s `LOOIC_wt` is the
 #'   stacking weight.
+#' @param reference `NULL` for loo's own reference — the model in the
+#'   first row, the one with the highest ELPD, against which
+#'   [loo::loo_compare()] signs every difference — or the name of another
+#'   model of `x` to take the differences from, so that a model behind
+#'   the reference prints a positive `elpd_diff`. Naming loo's own
+#'   reference changes nothing: the object's numbers are returned
+#'   untouched.
+#'
+#'   Under another reference `elpd_diff` becomes `elpd` minus the
+#'   reference's `elpd` — a difference of two numbers loo reported,
+#'   computed by apabayes, which is why it is named here — and the
+#'   standard error of the difference survives only where loo measured
+#'   it: `0` on the reference row, loo's own `se_diff` on the model that
+#'   was loo's reference (the same pair, read the other way round), and
+#'   `NA` on every other row, because a `compare.loo` object does not
+#'   carry the pointwise ELPDs another pair would need. Run
+#'   [loo::loo_compare()] on two models to get that standard error.
+#'   `p_worse` and `diag_diff` qualify a difference against loo's
+#'   reference and become `NA` for the same reason; every column that
+#'   describes a model rather than a pair is unchanged, as is the row
+#'   order.
 #' @method apa_tidy compare.loo
 #' @export
-apa_tidy.compare.loo <- function(x, weights = NULL, ...) {
+apa_tidy.compare.loo <- function(x, weights = NULL, reference = NULL, ...) {
   rlang::check_dots_empty()
   rlang::check_installed(
     "loo",
     reason = "to record the version that produced these numbers."
   )
-  cmp <- compare_loo_frame(x)
+  referenced <- compare_loo_reference(compare_loo_frame(x), reference)
+  cmp <- referenced$frame
   w <- compare_loo_weights(weights, cmp$model)
   n <- nrow(cmp)
   extra <- function(name, na) {
@@ -374,9 +396,62 @@ apa_tidy.compare.loo <- function(x, weights = NULL, ...) {
     ci_level = NA_real_,
     source_class = class(x),
     package_versions = package_versions_of(c("loo", "apabayes")),
-    reference = out$model[1],
+    reference = referenced$reference,
     weight_method = w$method
   )
+}
+
+# Which model the differences are taken from. `NULL` is loo's own
+# reference, the first row (loo sorts best first, in both shapes), and
+# then nothing is recomputed: measured 2026-09-17, re-deriving
+# `elpd_loo - elpd_loo[1]` differs from loo's own `elpd_diff` by up to
+# 1.2e-14, because loo sums the pointwise differences rather than
+# differencing the sums. loo's number is the one to report.
+compare_loo_reference <- function(frame, reference,
+                                  call = rlang::caller_env()) {
+  if (is.null(reference)) {
+    return(list(frame = frame, reference = frame$model[1]))
+  }
+  if (!rlang::is_string(reference)) {
+    cli::cli_abort(
+      "{.arg reference} must be the name of one model of {.arg x} or
+       {.code NULL}, not {.obj_type_friendly {reference}}.",
+      call = call
+    )
+  }
+  row <- match(reference, frame$model)
+  if (is.na(row)) {
+    cli::cli_abort(
+      c(
+        "{.arg x} has no model called {.val {reference}}.",
+        i = "Models: {.val {frame$model}}."
+      ),
+      call = call
+    )
+  }
+  if (row == 1L) {
+    return(list(frame = frame, reference = reference))
+  }
+  se <- rep(NA_real_, nrow(frame))
+  se[row] <- 0
+  # The pair loo measured is the same pair read the other way round, so
+  # its standard error is loo's, not apabayes'. Only if the object is
+  # still loo's own: a subset or reordered comparison no longer has its
+  # reference in row 1, and then no pair is known.
+  if (identical(frame$elpd_diff[1], 0) && identical(frame$se_diff[1], 0)) {
+    se[1] <- frame$se_diff[row]
+  }
+  frame$elpd_diff <- frame$elpd_loo - frame$elpd_loo[row]
+  frame$se_diff <- se
+  # Both qualify a difference against loo's reference and say nothing
+  # about any other pair.
+  if ("p_worse" %in% names(frame)) {
+    frame$p_worse <- rep(NA_real_, nrow(frame))
+  }
+  if ("diag_diff" %in% names(frame)) {
+    frame$diag_diff <- rep(NA_character_, nrow(frame))
+  }
+  list(frame = frame, reference = reference)
 }
 
 # The LOO columns every row needs; `model` is checked apart because the

@@ -90,6 +90,122 @@ test_that("both shapes of the same comparison give the same table", {
   )
 })
 
+# ---- reference (finding 9) ------------------------------------------------
+
+# loo always references the model with the highest ELPD, so `elpd_diff` is
+# signed against it and a sentence reporting how far a baseline trails has
+# to flip the sign by hand. `reference =` re-references the table; the
+# standard errors that survive are the ones loo actually measured
+# (spec-prerelease-fixes-0.1.0.md § B7).
+
+test_that("reference = NULL is the default and changes nothing", {
+  cmp <- loo::loo_compare(test_loo_list())
+  expect_identical(apa_tidy(cmp, reference = NULL), apa_tidy(cmp))
+})
+
+test_that("naming loo's own reference leaves every number untouched", {
+  # Measured: recomputing `elpd_loo - elpd_loo[1]` differs from loo's own
+  # `elpd_diff` by up to 1.2e-14, because loo sums pointwise differences
+  # rather than differencing the sums. The route must not introduce that.
+  cmp <- loo::loo_compare(test_loo_list())
+  out <- apa_tidy(cmp, reference = cmp$model[1])
+  expect_identical(out, apa_tidy(cmp))
+  expect_identical(out$elpd_diff, cmp$elpd_diff)
+  expect_identical(out$se_diff, cmp$se_diff)
+  expect_identical(out$p_worse, cmp$p_worse)
+  expect_identical(out$diag_diff, cmp$diag_diff)
+})
+
+test_that("a new reference re-references every difference", {
+  cmp <- loo::loo_compare(test_loo_list())
+  out <- apa_tidy(cmp, reference = "shifted")
+  at <- function(model) which(out$model == model)
+  expect_identical(out$model, cmp$model)
+  expect_equal(
+    out$elpd_diff,
+    cmp$elpd_loo - cmp$elpd_loo[at("shifted")],
+    tolerance = 1e-12
+  )
+  expect_identical(out$elpd_diff[at("shifted")], 0)
+  # The model loo referenced is now the positive one, by the magnitude
+  # loo gave the reference row.
+  expect_gt(out$elpd_diff[at("good")], 0)
+  expect_equal(
+    out$elpd_diff[at("good")], -cmp$elpd_diff[at("shifted")],
+    tolerance = 1e-12
+  )
+})
+
+test_that("only the standard errors loo measured survive a new reference", {
+  cmp <- loo::loo_compare(test_loo_list())
+  out <- apa_tidy(cmp, reference = "shifted")
+  at <- function(model) which(out$model == model)
+  expect_identical(out$se_diff[at("shifted")], 0)
+  expect_identical(out$se_diff[at("good")], cmp$se_diff[at("shifted")])
+  expect_identical(out$se_diff[at("wide")], NA_real_)
+  # Both qualify a difference against loo's reference and say nothing
+  # about another pair.
+  expect_true(all(is.na(out$p_worse)))
+  expect_true(all(is.na(out$diag_diff)))
+  # A model, not a pair: unchanged.
+  for (col in c("elpd", "se_elpd", "p_loo", "looic", "diag_elpd")) {
+    expect_identical(out[[col]], apa_tidy(cmp)[[col]], label = col)
+  }
+})
+
+test_that("the reference attribute follows the argument into the note", {
+  cmp <- loo::loo_compare(test_loo_list())
+  out <- apa_tidy(cmp, reference = "shifted")
+  expect_identical(attr(out, "reference"), "shifted")
+  expect_match(apa_note(apa_table(out)), "shifted", fixed = TRUE)
+})
+
+test_that("a re-referenced row prints its difference inline", {
+  cmp <- loo::loo_compare(test_loo_list())
+  out <- apa_tidy(cmp, reference = "shifted")
+  best <- apa_inline(out, "good", stats = "elpd_diff")$statistic
+  expect_match(best, "^\u0394ELPD = [0-9]")
+  expect_match(best, "*SE*", fixed = TRUE)
+  # No SE for a pair loo never measured; the value still prints.
+  no_se <- apa_inline(out, "wide", stats = "elpd_diff")$statistic
+  expect_false(grepl("SE", no_se, fixed = TRUE))
+  expect_match(no_se, "^\u0394ELPD = ")
+})
+
+test_that("a reference that is no model of the table is refused", {
+  cmp <- loo::loo_compare(test_loo_list())
+  expect_error(apa_tidy(cmp, reference = "nope"), "nope")
+  expect_error(apa_tidy(cmp, reference = "nope"), "good")
+  expect_error(apa_tidy(cmp, reference = 1), "`reference`")
+  expect_error(apa_tidy(cmp, reference = c("good", "wide")), "`reference`")
+  expect_error(apa_tidy(cmp, reference = NA), "`reference`")
+})
+
+test_that("the matrix shape re-references the same way", {
+  cmp <- fixture("compare_loo_matrix")
+  models <- rownames(cmp)
+  out <- apa_tidy(cmp, reference = models[2])
+  expect_identical(attr(out, "reference"), models[2])
+  expect_equal(
+    out$elpd_diff,
+    unname(cmp[, "elpd_loo"] - cmp[models[2], "elpd_loo"]),
+    tolerance = 1e-12
+  )
+  expect_identical(out$se_diff[2], 0)
+  expect_identical(out$se_diff[1], unname(cmp[models[2], "se_diff"]))
+  expect_true(all(is.na(out$p_worse)))
+})
+
+test_that("weights and reference work together", {
+  loos <- test_loo_list()
+  cmp <- loo::loo_compare(loos)
+  w <- loo::loo_model_weights(loos, method = "stacking")
+  out <- apa_tidy(cmp, weights = w, reference = "wide")
+  expect_identical(out$weight, unname(w[match(out$model, names(w))]))
+  expect_identical(attr(out, "reference"), "wide")
+  expect_identical(out$elpd_diff[out$model == "wide"], 0)
+})
+
 # ---- weights -------------------------------------------------------------
 
 test_that("weights from loo_model_weights() are matched by model name", {

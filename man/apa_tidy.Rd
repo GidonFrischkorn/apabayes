@@ -68,7 +68,7 @@
 
 \method{apa_tidy}{brmshypothesis}(x, directional = NULL, ...)
 
-\method{apa_tidy}{compare.loo}(x, weights = NULL, ...)
+\method{apa_tidy}{compare.loo}(x, weights = NULL, reference = NULL, ...)
 
 \method{apa_tidy}{bayesfactor_models}(x, ...)
 
@@ -213,6 +213,28 @@ weights are matched to rows by model name, never by position, and
 must name exactly the models of \code{x}. The comparison object carries
 no weights; \code{performance::compare_performance()}'s \code{LOOIC_wt} is the
 stacking weight.}
+
+\item{reference}{\code{NULL} for loo's own reference — the model in the
+first row, the one with the highest ELPD, against which
+\code{\link[loo:loo_compare]{loo::loo_compare()}} signs every difference — or the name of another
+model of \code{x} to take the differences from, so that a model behind
+the reference prints a positive \code{elpd_diff}. Naming loo's own
+reference changes nothing: the object's numbers are returned
+untouched.
+
+Under another reference \code{elpd_diff} becomes \code{elpd} minus the
+reference's \code{elpd} — a difference of two numbers loo reported,
+computed by apabayes, which is why it is named here — and the
+standard error of the difference survives only where loo measured
+it: \code{0} on the reference row, loo's own \code{se_diff} on the model that
+was loo's reference (the same pair, read the other way round), and
+\code{NA} on every other row, because a \code{compare.loo} object does not
+carry the pointwise ELPDs another pair would need. Run
+\code{\link[loo:loo_compare]{loo::loo_compare()}} on two models to get that standard error.
+\code{p_worse} and \code{diag_diff} qualify a difference against loo's
+reference and become \code{NA} for the same reason; every column that
+describes a model rather than a pair is unchanged, as is the row
+order.}
 }
 \value{
 An \link{apabayes_tidy} tibble.
