@@ -47,10 +47,13 @@ A character vector of `length(x)` without names; `NA` in gives
 
 ## Details
 
-Rounding is C `printf` rounding through
-[`formatC()`](https://rdrr.io/r/base/formatc.html), the same as
-[`papaja::apa_num()`](https://rdrr.io/pkg/papaja/man/apa_num.html). A
-result that would read `-0.00` is printed `0.00`.
+Rounding is apabayes's own, so that the same value prints the same
+string on every platform: the number is rounded as it is written, with
+ties going away from zero (`0.005` prints `0.01`, `2.675` prints
+`2.68`), and [`formatC()`](https://rdrr.io/r/base/formatc.html) only
+lays the rounded number out. Leaving the rounding to the C library made
+the result differ between Windows and the other platforms. A result that
+would read `-0.00` is printed `0.00`.
 
 ## papaja
 

@@ -2,6 +2,51 @@
 
 ## apabayes 0.1.0
 
+- fix: every formatter rounds by apabayes’s own rule instead of the C
+  library’s, so the same value prints the same string on every platform.
+  The number is rounded as it is written, with ties going away from zero
+  (`apa_num(0.005)` is `0.01`, `apa_num(2.675)` is `2.68`), and
+  [`formatC()`](https://rdrr.io/r/base/formatc.html) only lays the
+  rounded number out. Measured: the first CI run printed `.00` on
+  Windows where macOS and Linux printed `.01`, because Windows rounds
+  the 15-significant-digit decimal with ties to even while the others
+  round the stored double. Values whose double sits just below the
+  written midpoint now round up on macOS and Linux as well (`0.145`
+  prints `0.15`, was `0.14`), and an exact binary tie goes away from
+  zero rather than to even (`0.125` prints `0.13`, was `0.12`). A value
+  that rounds to zero still prints without a sign (`.00`, never `-.00`),
+  unchanged on every platform and now asserted directly rather than
+  through a seed helper that keeps the sign. The regime boundaries of
+  [`apa_bf()`](https://www.gfrischkorn.org/apabayes/reference/apa_bf.md)
+  and
+  [`apa_er()`](https://www.gfrischkorn.org/apabayes/reference/apa_er.md)
+  use the same rounding, so a value is put in the regime it is printed
+  in.
+
+- fix: the `modelbased` examples and tests guard on `marginaleffects` as
+  well, and `marginaleffects (>= 0.29.0)` joins `Suggests`.
+  `estimate_contrasts()` does its work through marginaleffects, which is
+  a Suggests of modelbased rather than a dependency, so an installed
+  modelbased was not enough: on a machine without marginaleffects the
+  example run of `R CMD check` ERRORed.
+
+- internal: a machine that cannot build a model now reports the live-fit
+  tests as *not run* rather than as failing. `test_brms_fit()`,
+  `test_bmm_fit()` and `test_blavaan_fit()` skip with the condition
+  message when the fit itself errors, because apabayes fits nothing and
+  a failure inside `brm()` or `bcfa()` says something about the
+  environment and not about the package — `skip_on_cran()` and
+  `skip_if_not_installed()` cannot see a missing C++ toolchain. The
+  runjags test takes the JAGS binary from the PATH instead of a
+  hardcoded Homebrew path, and the blavaan cmdstan-target test guards
+  its fit the same way.
+
+- internal: `apa_tidy_sem_fit(fit_ci_level =)` is tested by the property
+  it promises — that the bounds are the HDI at the level asked for,
+  computed from the same indices — rather than by a strict inequality
+  between two bounds that the draws can make equal, which is how it
+  failed on Windows.
+
 - feat:
   [`apa_value()`](https://www.gfrischkorn.org/apabayes/reference/apa_value.md)
   reads one value out of a tidy table. It addresses a row exactly as

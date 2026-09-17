@@ -670,6 +670,10 @@ apa_tidy(emmeans::contrast(means, "pairwise"), rope = c(-1, 1))
 #> 2 cyl_f4 - cyl_… NA        11.6   9.02   14.1  hdi           0.95     1        0
 #> 3 cyl_f6 - cyl_… NA         4.7   4.30    5.09 hdi           0.95     1        0
 
+# `marginaleffects` is guarded for as well as `modelbased`: it is a
+# Suggests of modelbased rather than a dependency, and
+# `estimate_contrasts()` does its work through it. The version it
+# needs is in `DESCRIPTION`.
 # A modelbased table is reported as it stands. It records its interval
 # only in its call: none named there is modelbased's equal-tailed
 # default, and a variable there has to be named with `ci =`.
@@ -680,12 +684,14 @@ fit <- rstanarm::stan_glm(
   data = cars, chains = 2, iter = 1000, seed = 1, refresh = 0
 )
 apa_tidy(modelbased::estimate_contrasts(fit, contrast = "cyl_f"))
-#> Error: Package `marginaleffects` required for this function to work.
-#>   Please install it by running `install.packages("marginaleffects")`.
+#> Error: Sorry, calculating marginal contrasts failed with following error:
+#>   Package `collapse` required for this function to work. Please install it
+#>   by running `install.packages("collapse")`.
 method <- "hdi"
 means <- modelbased::estimate_means(fit, by = "cyl_f", ci_method = method)
-#> Error: Package `marginaleffects` required for this function to work.
-#>   Please install it by running `install.packages("marginaleffects")`.
+#> Error: Sorry, calculating marginal means failed with following error:
+#>   Package `collapse` required for this function to work. Please install it
+#>   by running `install.packages("collapse")`.
 apa_tidy(means, ci = "hdi")
 #> # apabayes tidy table: contrasts (3 rows)
 #> # median, 95% HDI; source: emmGrid

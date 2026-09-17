@@ -90,8 +90,12 @@ gives <code>NA_character_</code> out.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Rounding is C <code>printf</code> rounding through <code><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC()</a></code>, the same as
-<code><a href="https://rdrr.io/pkg/papaja/man/apa_num.html" class="external-link">papaja::apa_num()</a></code>. A result that would read <code>-0.00</code> is printed
+    <p>Rounding is apabayes's own, so that the same value prints the same
+string on every platform: the number is rounded as it is written, with
+ties going away from zero (<code>0.005</code> prints <code>0.01</code>, <code>2.675</code> prints
+<code>2.68</code>), and <code><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC()</a></code> only lays the rounded number out. Leaving the
+rounding to the C library made the result differ between Windows and
+the other platforms. A result that would read <code>-0.00</code> is printed
 <code>0.00</code>.</p>
     </div>
     <div class="section level2">
