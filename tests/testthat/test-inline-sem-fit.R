@@ -96,8 +96,15 @@ test_that("interval, ci_label and leading_zero reach the RMSEA part", {
     "90% CrI [",
     fixed = TRUE
   )
+  # An index drops the separator with its label, as an estimate does
+  # (finding 3): `RMSEA = .091 [.071, .114]`.
   bare <- apa_inline(t, ci_label = NULL, stats = "rmsea", markup = "plain")
-  expect_match(bare$full_result, ", [", fixed = TRUE)
+  expect_match(
+    bare$full_result,
+    paste0(apa_num(row$rmsea, 3, leading_zero = FALSE), " ["),
+    fixed = TRUE
+  )
+  expect_false(grepl(", [", bare$full_result, fixed = TRUE))
   expect_match(
     apa_inline(
       t,

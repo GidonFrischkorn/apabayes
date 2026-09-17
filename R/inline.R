@@ -145,9 +145,12 @@
 #' @param interval `FALSE` drops the interval.
 #' @param ci_label `"auto"` labels the interval from the row's
 #'   `ci_method`; a string overrides it; `NULL` keeps the brackets and
-#'   drops the label. A row whose `ci_level` is `NA` prints the brackets
-#'   alone whatever `ci_label` says, because a label without its level
-#'   would claim more than the table records.
+#'   drops the label *and the comma that introduced it*, so the estimate
+#'   reads `−5.39 [−6.95, −3.78]`. A row whose `ci_level` is `NA` prints
+#'   the brackets without a label whatever `ci_label` says, because a
+#'   label without its level would claim more than the table records —
+#'   but it keeps the comma, because that is the table's silence and not
+#'   something the caller asked for.
 #' @param digits Decimals for estimates and interval bounds; `NULL` is 2,
 #'   and on a sem_fit row 3 for the indices and 2 for χ².
 #' @param digits_prob Decimals for pd, p and the ROPE share.

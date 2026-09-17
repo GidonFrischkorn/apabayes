@@ -81,8 +81,18 @@ test_that("interval, ci_label and the row's method control the interval", {
     apa_inline(t, "wt", interval = FALSE)$estimate,
     paste0("*b* = ", apa_num(row$estimate))
   )
+  # `ci_label = NULL` drops the label and the separator that introduced
+  # it (finding 3): `−5.39 [−6.95, −3.78]` is the shape a sentence that
+  # lists several estimates needs.
   bare <- apa_inline(t, "wt", ci_label = NULL)$estimate
-  expect_match(bare, ", [", fixed = TRUE)
+  expect_identical(
+    bare,
+    paste0(
+      "*b* = ", apa_num(row$estimate), " ",
+      apa_ci(row$ci_low, row$ci_high, label = NULL)
+    )
+  )
+  expect_false(grepl(", [", bare, fixed = TRUE))
   expect_false(grepl("CrI", bare))
   hdi <- apa_inline(t, "wt", ci_label = "HDI")$estimate
   expect_match(hdi, "95% HDI [", fixed = TRUE)
@@ -117,6 +127,29 @@ test_that("a row with an interval but no level prints bare brackets", {
   expect_identical(
     apa_inline(t, "wt", symbol = FALSE, ci_label = "HDI")$estimate,
     bare
+  )
+  # The separator is dropped by what the caller asked for, never by what
+  # the row happens to carry: a missing level keeps the comma, an
+  # explicit `ci_label = NULL` on the same row drops it.
+  expect_identical(
+    apa_inline(t, "wt", symbol = FALSE, ci_label = NULL)$estimate,
+    sub(", [", " [", bare, fixed = TRUE)
+  )
+})
+
+test_that("ci_label = NULL changes the estimate part alone", {
+  t <- full_row_table()
+  with_label <- apa_inline(t, "x")
+  bare <- apa_inline(t, "x", ci_label = NULL)
+  expect_identical(bare$statistic, with_label$statistic)
+  expect_identical(
+    bare$full_result,
+    paste(bare$estimate, bare$statistic, sep = ", ")
+  )
+  # Nothing to separate when there is no interval: no trailing space.
+  expect_identical(
+    apa_inline(t, "x", ci_label = NULL, interval = FALSE)$estimate,
+    apa_inline(t, "x", interval = FALSE)$estimate
   )
 })
 

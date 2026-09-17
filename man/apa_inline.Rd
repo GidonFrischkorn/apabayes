@@ -89,9 +89,12 @@ estimate alone.}
 
 \item{ci_label}{\code{"auto"} labels the interval from the row's
 \code{ci_method}; a string overrides it; \code{NULL} keeps the brackets and
-drops the label. A row whose \code{ci_level} is \code{NA} prints the brackets
-alone whatever \code{ci_label} says, because a label without its level
-would claim more than the table records.}
+drops the label \emph{and the comma that introduced it}, so the estimate
+reads \verb{−5.39 [−6.95, −3.78]}. A row whose \code{ci_level} is \code{NA} prints
+the brackets without a label whatever \code{ci_label} says, because a
+label without its level would claim more than the table records —
+but it keeps the comma, because that is the table's silence and not
+something the caller asked for.}
 
 \item{digits}{Decimals for estimates and interval bounds; \code{NULL} is 2,
 and on a sem_fit row 3 for the indices and 2 for χ².}

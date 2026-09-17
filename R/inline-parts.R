@@ -56,11 +56,21 @@ inline_estimate_row <- function(estimate, low, high, method, level, sym,
     label <- NULL
     level <- 0.95
   }
-  paste0(est, ", ", apa_ci(
+  paste0(est, inline_ci_separator(opts), apa_ci(
     low, high,
     level = level, label = label, digits = opts$digits,
     leading_zero = leading_zero, markup = m
   ))
+}
+
+# What comes between an estimate and its interval. `ci_label = NULL` asks
+# for the brackets without the label, and the comma introduced the label
+# (finding 3): `−5.39 [−6.95, −3.78]` is the shape a sentence listing
+# several estimates needs. The test is what the *caller* asked for, never
+# what the row carries: a row whose `ci_level` is NA also prints without
+# a label, but that is the table's silence, and the comma stays.
+inline_ci_separator <- function(opts) {
+  if (is.null(opts$ci_label)) " " else ", "
 }
 
 # Row-wise over a table, so that per-row levels, methods, symbols and
@@ -358,7 +368,7 @@ sem_index_part <- function(name, estimate, fmt, low = NA, high = NA,
     label <- NULL
     level <- 0.95
   }
-  paste0(out, ", ", apa_ci(
+  paste0(out, inline_ci_separator(opts), apa_ci(
     low, high,
     level = level, label = label, digits = fmt$index_digits,
     leading_zero = fmt$index_zero, markup = m

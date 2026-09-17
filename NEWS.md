@@ -1,5 +1,12 @@
 # apabayes 0.1.0
 
+* feat: `apa_inline(ci_label = NULL)` drops the separator with the label,
+  so an estimate and its interval print as `−5.39 [−6.95, −3.78]` — the
+  shape a sentence listing several estimates needs, and the one
+  `?apa_inline` already described. A row whose `ci_level` is `NA` still
+  prints the brackets after a comma: that is the table's silence about
+  its own interval, not something the caller asked for.
+
 * fix: a brms fit on which `parameters::model_parameters()` fails
   upstream now re-raises naming `apa_tidy(brms::as_draws_df(fit))` as the
   route that reads the draws directly and does not hit the failure, the

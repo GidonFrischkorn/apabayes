@@ -12,11 +12,13 @@ contrast_table <- function(name = "pairs", ...) {
   apa_tidy(test_emm_grid(name), ...)
 }
 
-# The expected estimate part of one row.
+# The expected estimate part of one row. `label = NULL` is
+# `ci_label = NULL`, which drops the separator with the label (B5).
 expected_estimate <- function(row, m, label = "HDI", digits = 2,
                               leading_zero = TRUE) {
   paste0(
-    apa_num(row$estimate, digits, leading_zero, markup = m), ", ",
+    apa_num(row$estimate, digits, leading_zero, markup = m),
+    if (is.null(label)) " " else ", ",
     apa_ci(
       row$ci_low, row$ci_high,
       level = row$ci_level, label = label, digits = digits,
