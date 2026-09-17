@@ -1,5 +1,12 @@
 # apabayes 0.1.0
 
+* fix: the `modelbased` examples and tests guard on `marginaleffects` as
+  well, and `marginaleffects (>= 0.29.0)` joins `Suggests`.
+  `estimate_contrasts()` does its work through marginaleffects, which is
+  a Suggests of modelbased rather than a dependency, so an installed
+  modelbased was not enough: on a machine without marginaleffects the
+  example run of `R CMD check` ERRORed.
+
 * feat: `apa_value()` reads one value out of a tidy table. It addresses a
   row exactly as `apa_inline()` does — by term, by label, by the two
   sides of a structural-equation path, by a correlation's pair in either

@@ -308,6 +308,10 @@ test_that("a slopes table is refused by the default method", {
 
 test_that("an unstripped table of a live stanreg fit reads the same way", {
   skip_if_not_installed("modelbased")
+  # `estimate_contrasts()` does its work through marginaleffects, which is
+  # a Suggests of modelbased rather than a dependency: an installed
+  # modelbased is not enough (measured on CI, 2026-09-17).
+  skip_if_not_installed("marginaleffects", "0.29.0")
   skip_if_no_bayestestr()
   fit <- test_stanreg_fit("factor")
   x <- modelbased::estimate_contrasts(

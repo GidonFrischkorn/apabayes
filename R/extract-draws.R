@@ -71,8 +71,12 @@
 #' means <- emmeans::emmeans(grid, ~cyl_f)
 #' apa_tidy(means)
 #' apa_tidy(emmeans::contrast(means, "pairwise"), rope = c(-1, 1))
-#' @examplesIf rlang::is_installed(c("modelbased", "rstanarm"))
+#' @examplesIf rlang::is_installed(c("modelbased", "rstanarm", "marginaleffects"))
 #'
+#' # `marginaleffects` is guarded for as well as `modelbased`: it is a
+#' # Suggests of modelbased rather than a dependency, and
+#' # `estimate_contrasts()` does its work through it. The version it
+#' # needs is in `DESCRIPTION`.
 #' # A modelbased table is reported as it stands. It records its interval
 #' # only in its call: none named there is modelbased's equal-tailed
 #' # default, and a variable there has to be named with `ci =`.

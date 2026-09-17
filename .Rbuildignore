@@ -15,3 +15,4 @@
 ^\.claude$
 ^CLAUDE\.md$
 ^Rplots\.pdf$
+^\.lintr$
