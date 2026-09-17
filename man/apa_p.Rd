@@ -8,7 +8,7 @@
 \usage{
 apa_p(x, digits = 3, markup = NULL, symbol = FALSE)
 
-apa_pd(x, digits = 3, markup = NULL, symbol = FALSE)
+apa_pd(x, digits = 3, markup = NULL, symbol = FALSE, operator = FALSE)
 
 apa_prob(x, digits = NULL, percent = FALSE, markup = NULL)
 }
@@ -25,6 +25,13 @@ format, then \code{"md"}. Decides the minus sign (U+2212 outside
 
 \item{symbol}{\code{TRUE} prepends the statistic symbol in the markup of the
 target: \verb{*p* = .023}, \verb{*pd* > .999}.}
+
+\item{operator}{\code{apa_pd()} only: \code{TRUE} prepends \code{"= "} unless the value
+already opens with its own relation from the floor or the cap (\code{.956}
+becomes \verb{= .956}; \verb{> .999} is unchanged), so the result reads inside a
+sentence that already names the statistic (\verb{*pd* \{x\}}) without the
+caller having to re-derive which branch fired. Ignored when \code{symbol}
+is \code{TRUE}, which already includes it.}
 
 \item{percent}{\code{apa_prob()} only: print \verb{12.3\%} instead of \code{.123}. The
 floor and cap apply on the percentage scale (\verb{< 0.1\%}, \verb{> 99.9\%}).}

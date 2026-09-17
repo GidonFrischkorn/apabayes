@@ -462,6 +462,26 @@ test_that("blavaan is required, not assumed", {
   expect_error(apa_tidy_sem_fit(fit), "blavaan")
 })
 
+test_that("an upstream model_parameters() failure names the alternative", {
+  # Finding 6 of the miniQmetrics acceptance test
+  # (local/findings-2026-09-16.md): on some fits parameters::
+  # model_parameters(blavaan) fails with an upstream message ("Arguments
+  # must be mcmc objects") that names neither blavaan nor the working
+  # standardize = TRUE path. Mocked because the real trigger was one
+  # specific external fit, not a property of any fixture here.
+  fit <- test_blavaan_fit("one")
+  local_mocked_bindings(
+    model_parameters = function(...) {
+      stop("Arguments must be mcmc objects")
+    },
+    .package = "parameters"
+  )
+  expect_error(apa_tidy(fit), "standardize = TRUE", fixed = TRUE)
+  expect_error(apa_tidy(fit), class = "rlang_error")
+  # The standardized path does not call model_parameters() at all.
+  expect_no_error(apa_tidy(fit, standardize = TRUE))
+})
+
 test_that("the lavaan methods still refuse a blavaan fit when called direct", {
   # apa_tidy(bfit) now dispatches to the blavaan method, so the guard on
   # the lavaan method is reachable only through the method itself — which

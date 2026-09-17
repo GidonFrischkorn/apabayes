@@ -107,6 +107,20 @@ markdown, and the text of the table note attached for \code{\link[=apa_note]{apa
 It is the table counterpart of \code{\link[=apa_inline]{apa_inline()}} and takes the same
 formatting options.
 }
+\section{Scope}{
+
+\code{apa_table()} targets a model-parameter table: one row per parameter
+(or per hypothesis, model or pair, depending on the contract type),
+one column per statistic. It has no pivot and no second estimate
+column, so a table shaped by a design factor — one row per
+item-feature cell, one column per measurement occasion — or one that
+lays two samples' estimates side by side is outside it. Carry its
+tibble on into your own reshaping (\code{tidyr::pivot_wider()} and the
+like) and then into \code{\link[apa7:apa_flextable]{apa7::apa_flextable()}}; the vignette "Reporting
+brms models in apaquarto" has a worked example of exactly that,
+\code{apa_table()} output pivoted into a cross-tabulated design table.
+}
+
 \section{What is printed}{
 
 A \code{parameters} table has one row per parameter: the label column

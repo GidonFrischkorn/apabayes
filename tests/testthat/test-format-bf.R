@@ -10,22 +10,33 @@ test_that("apa_bf() picks the regime by size under style = 'auto'", {
   expect_identical(apa_bf(20.86), "20.9")
   expect_identical(apa_bf(9999), "9,999.0")
   expect_identical(apa_bf(9999.94), "9,999.9")
-  expect_identical(apa_bf(9999.99), "1.0 × 10^4^")
-  expect_identical(apa_bf(10000), "1.0 × 10^4^")
-  expect_identical(apa_bf(123456), "1.2 × 10^5^")
-  expect_identical(apa_bf(0.0004), "4.0 × 10^−4^")
-  expect_identical(apa_bf(0.009), "9.0 × 10^−3^")
+  expect_identical(apa_bf(9999.99), "1.00 × 10^4^")
+  expect_identical(apa_bf(10000), "1.00 × 10^4^")
+  expect_identical(apa_bf(123456), "1.23 × 10^5^")
+  expect_identical(apa_bf(0.0004), "4.00 × 10^−4^")
+  expect_identical(apa_bf(0.009), "9.00 × 10^−3^")
   expect_identical(apa_bf(5.3412, digits = 3), "5.341")
   expect_identical(apa_bf(0.004, digits = 3), "0.004")
 })
 
+test_that("apa_bf() honours digits in style = 'auto's scientific regime", {
+  # Finding 2 of the miniQmetrics acceptance test
+  # (local/findings-2026-09-16.md): `digits` was silently ignored here,
+  # always printing a one-decimal mantissa. Decided (GF, 2026-09-16):
+  # honour it, so `apa_bf()` is a true drop-in for a caller's own
+  # two-decimal `fmt_bf()` with no `style =`.
+  expect_identical(apa_bf(4.975034e14, digits = 1), "5.0 × 10^14^")
+  expect_identical(apa_bf(4.975034e14, digits = 2), "4.98 × 10^14^")
+  expect_identical(apa_bf(4.975034e14, digits = 3), "4.975 × 10^14^")
+})
+
 test_that("apa_bf() composes scientific notation per target", {
-  expect_identical(apa_bf(123456, markup = "md"), "1.2 × 10^5^")
-  expect_identical(apa_bf(123456, markup = "typst"), "1.2 × 10^5^")
-  expect_identical(apa_bf(123456, markup = "latex"), "1.2 $\\times$ 10^5^")
-  expect_identical(apa_bf(123456, markup = "plain"), "1.2 x 10^5")
-  expect_identical(apa_bf(0.0004, markup = "plain"), "4.0 x 10^-4")
-  expect_identical(apa_bf(0.0004, markup = "latex"), "4.0 $\\times$ 10^−4^")
+  expect_identical(apa_bf(123456, markup = "md"), "1.23 × 10^5^")
+  expect_identical(apa_bf(123456, markup = "typst"), "1.23 × 10^5^")
+  expect_identical(apa_bf(123456, markup = "latex"), "1.23 $\\times$ 10^5^")
+  expect_identical(apa_bf(123456, markup = "plain"), "1.23 x 10^5")
+  expect_identical(apa_bf(0.0004, markup = "plain"), "4.00 x 10^-4")
+  expect_identical(apa_bf(0.0004, markup = "latex"), "4.00 $\\times$ 10^−4^")
 })
 
 test_that("apa_bf() handles infinity, zero and NA", {
@@ -45,7 +56,7 @@ test_that("apa_bf() inverts for direction = '01'", {
   expect_identical(apa_bf(Inf, direction = "01"), "0")
   expect_identical(apa_bf(0, direction = "01"), "∞")
   expect_identical(apa_bf(NA, direction = "01"), NA_character_)
-  expect_identical(apa_bf(1e-6, direction = "01"), "1.0 × 10^6^")
+  expect_identical(apa_bf(1e-6, direction = "01"), "1.00 × 10^6^")
 })
 
 test_that("apa_bf() prepends the symbol with the matching subscript", {
@@ -113,7 +124,10 @@ test_that("apa_bf() reproduces the m3, miniQ and SDVWM fmt_bf() helpers", {
     "^\\$(.+) \\\\times 10\\^\\{(-?\\d+)\\}\\$$", "\\1 $\\\\times$ 10^\\2^",
     m3_big
   )
-  expect_identical(apa_bf(big, markup = "latex"), m3_big)
+  # m3's own fmt_bf() hard-codes one mantissa decimal in this regime; now
+  # that `digits` is honoured here (finding 2), `digits = 1` is what
+  # matches it, not apa_bf()'s own default of 2.
+  expect_identical(apa_bf(big, digits = 1, markup = "latex"), m3_big)
   # miniQ: every value scientific, two decimals, Unicode times; the seed
   # writes a negative exponent with a hyphen, apabayes with the minus
   # sign, so the comparison stays at exponents of 0 or more

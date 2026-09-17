@@ -133,10 +133,17 @@ markup <- function(x, markup = NULL, italic = FALSE, subscript = NULL,
 #' @return Character vector of `length(value)`; `NA` stays `NA`.
 #' @noRd
 stat_string <- function(name, value) {
-  comparison <- "^(<|>|\u2265|\u2264|\\$\\\\geq\\$|\\$\\\\leq\\$)"
   joiner <- rep(" = ", length(value))
-  joiner[!is.na(value) & grepl(comparison, value)] <- " "
+  joiner[has_comparison_prefix(value)] <- " "
   out <- paste0(name, joiner, value, recycle0 = TRUE)
   out[is.na(value)] <- NA_character_
   out
+}
+
+# Shared by stat_string() and apa_pd(operator = TRUE): a formatted value
+# already opens with its own relation (a floor, a cap, or a Wald-style
+# bound) and takes a bare space rather than " = " before it.
+has_comparison_prefix <- function(value) {
+  comparison <- "^(<|>|\u2265|\u2264|\\$\\\\geq\\$|\\$\\\\leq\\$)"
+  !is.na(value) & grepl(comparison, value)
 }

@@ -52,9 +52,9 @@ With \code{style = "auto"}, the value after \code{direction} is applied prints
 as
 \itemize{
 \item the infinity symbol when infinite, \code{0} when zero;
-\item a mantissa to one decimal times a power of ten when 10,000 or more,
-or below \code{10^-digits} (\verb{1.2 × 10^5^}, \verb{4.0 × 10^−4^}), so that a
-small BF10 never prints as \code{0.00};
+\item a mantissa with \code{digits} decimals times a power of ten when 10,000 or
+more, or below \code{10^-digits} (\verb{1.23 × 10^5^}, \verb{4.00 × 10^−4^} at the
+default \code{digits = 2}), so that a small BF10 never prints as \code{0.00};
 \item one decimal from 10 up to 10,000 (\code{20.9});
 \item \code{digits} decimals otherwise (\code{5.34}).
 }

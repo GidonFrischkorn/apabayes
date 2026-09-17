@@ -326,6 +326,21 @@ test_that("a data frame that is not draws is refused, not coerced", {
   expect_error(apa_tidy(flagged), "numeric", fixed = TRUE)
 })
 
+test_that("a summary matrix too short to be draws is refused, not coerced", {
+  skip_if_no_draws()
+  # Finding 1 of the miniQmetrics acceptance test
+  # (local/findings-2026-09-16.md, decided by Gidon 2026-09-16): a plain
+  # matrix carries no class to refuse on, unlike the data-frame case
+  # above, so a 2 x 6 matrix of per-model max-Rhat/min-ESS summaries was
+  # silently read as two draws of six variables. The estimate it produced
+  # was the mean of an R-hat and an ESS: confident and meaningless.
+  conv <- matrix(
+    c(1.0014, 2578.1, 1.002, 3000, 1.001, 2900),
+    nrow = 2, dimnames = list(c("max_rhat", "min_ess"), paste0("m", 1:3))
+  )
+  expect_error(apa_tidy(conv), "too few draws")
+})
+
 test_that("posterior is required, not assumed", {
   skip_if_no_draws()
   draws <- fixture("draws_brms")

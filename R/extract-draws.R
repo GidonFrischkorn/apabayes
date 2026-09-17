@@ -300,6 +300,17 @@ apa_tidy.draws <- function(x,
 
 # The one `describe_posterior()` call, with the arguments the method was
 # given; the ROPE arguments are passed only when a ROPE was asked for.
+#
+# Finding 1 of the miniQmetrics acceptance test
+# (local/findings-2026-09-16.md, decided by Gidon 2026-09-16): a matrix or
+# data frame with too few rows to be a real posterior (a stored summary
+# table, e.g. two rows of max-Rhat/min-ESS per model, mistaken for draws
+# by apa_tidy.default()) still returns a confident estimate — the mean of
+# the two summary numbers — while bayestestR warns "the posterior is too
+# short, returning NAs" for the interval alone. That warning is the only
+# signal a data frame's numeric columns are not actually draws, so it is
+# promoted to an error here rather than left for a caller's `warning:
+# false` to swallow.
 describe_draws <- function(selected, centrality, ci, ci_level, rope,
                            rope_ci) {
   args <- list(
@@ -313,7 +324,22 @@ describe_draws <- function(selected, centrality, ci, ci_level, rope,
     args$rope_range <- rope
     args$rope_ci <- rope_ci
   }
-  as.data.frame(do.call(bayestestR::describe_posterior, args))
+  withCallingHandlers(
+    as.data.frame(do.call(bayestestR::describe_posterior, args)),
+    warning = function(w) {
+      if (grepl("too short", conditionMessage(w), fixed = TRUE)) {
+        cli::cli_abort(
+          c(
+            "{.arg x} has too few draws to report.",
+            i = "A posterior this short cannot produce a reportable
+                 interval; it is more likely a summary table mistaken for
+                 draws than a real, if tiny, posterior."
+          ),
+          parent = w
+        )
+      }
+    }
+  )
 }
 
 # R-hat and both ESS columns, matched to the requested terms by name.

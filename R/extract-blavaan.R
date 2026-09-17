@@ -129,9 +129,29 @@ blavaan_posterior <- function(x, standardize, component, centrality, ci,
                               ci_level, rope, rope_ci) {
   draws <- posterior::as_draws_df(blavaan::blavInspect(x, "mcmc"))
   if (isFALSE(standardize)) {
-    tbl <- call_model_parameters(
-      x, centrality, ci, ci_level, rope, rope_ci,
-      component = component, diagnostic = NULL
+    tbl <- tryCatch(
+      call_model_parameters(
+        x, centrality, ci, ci_level, rope, rope_ci,
+        component = component, diagnostic = NULL
+      ),
+      error = function(cnd) {
+        # Finding 6 of the miniQmetrics acceptance test
+        # (local/findings-2026-09-16.md): on some fits
+        # parameters::model_parameters() fails upstream (measured:
+        # "Arguments must be mcmc objects", identically on the bare
+        # easystats call), and the message reached the user naming
+        # neither the fit nor the one path that already avoids
+        # easystats entirely.
+        cli::cli_abort(
+          c(
+            "{.pkg parameters} could not summarise this blavaan fit.",
+            i = "{.code standardize = TRUE} reads
+                 {.fn blavaan::standardizedPosterior} directly instead
+                 and does not hit this."
+          ),
+          parent = cnd
+        )
+      }
     )
     return(list(tbl = tbl, draws = draws, terms = tbl$Parameter))
   }

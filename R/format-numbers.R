@@ -173,6 +173,12 @@ format_num <- function(x, digits, leading_zero, big_mark, target) {
 #'   `apa_prob()` the default is 3 for proportions and 1 for percentages.
 #' @param symbol `TRUE` prepends the statistic symbol in the markup of the
 #'   target: `*p* = .023`, `*pd* > .999`.
+#' @param operator `apa_pd()` only: `TRUE` prepends `"= "` unless the value
+#'   already opens with its own relation from the floor or the cap (`.956`
+#'   becomes `= .956`; `> .999` is unchanged), so the result reads inside a
+#'   sentence that already names the statistic (`*pd* {x}`) without the
+#'   caller having to re-derive which branch fired. Ignored when `symbol`
+#'   is `TRUE`, which already includes it.
 #' @param percent `apa_prob()` only: print `12.3%` instead of `.123`. The
 #'   floor and cap apply on the percentage scale (`< 0.1%`, `> 99.9%`).
 #' @inheritParams apa_num
@@ -222,15 +228,21 @@ apa_p <- function(x, digits = 3, markup = NULL, symbol = FALSE) {
 
 #' @rdname apa_p
 #' @export
-apa_pd <- function(x, digits = 3, markup = NULL, symbol = FALSE) {
+apa_pd <- function(x, digits = 3, markup = NULL, symbol = FALSE,
+                   operator = FALSE) {
   x <- check_numeric(x)
   check_range01(x)
   check_digits(digits, min = 1)
   check_flag(symbol)
+  check_flag(operator)
   target <- markup_target(markup)
   out <- format_bounded(x, digits)
   if (symbol) {
     out <- stat_string(markup("pd", target, italic = TRUE), out)
+  } else if (operator) {
+    out[!is.na(out) & !has_comparison_prefix(out)] <- paste0(
+      "= ", out[!is.na(out) & !has_comparison_prefix(out)]
+    )
   }
   out
 }
@@ -378,9 +390,9 @@ format_level <- function(level) {
 #' With `style = "auto"`, the value after `direction` is applied prints
 #' as
 #' * the infinity symbol when infinite, `0` when zero;
-#' * a mantissa to one decimal times a power of ten when 10,000 or more,
-#'   or below `10^-digits` (`1.2 × 10^5^`, `4.0 × 10^−4^`), so that a
-#'   small BF10 never prints as `0.00`;
+#' * a mantissa with `digits` decimals times a power of ten when 10,000 or
+#'   more, or below `10^-digits` (`1.23 × 10^5^`, `4.00 × 10^−4^` at the
+#'   default `digits = 2`), so that a small BF10 never prints as `0.00`;
 #' * one decimal from 10 up to 10,000 (`20.9`);
 #' * `digits` decimals otherwise (`5.34`).
 #'
@@ -459,7 +471,7 @@ format_bf_value <- function(v, style, digits, big_mark, target) {
     sci <- style == "auto" & (as_printed(p, 1) >= 1e4 | p < 10^-digits)
     one <- !sci & as_printed(p, digits) >= 10
     two <- !sci & !one
-    res[sci] <- format_sci(p[sci], 1, target)
+    res[sci] <- format_sci(p[sci], digits, target)
     res[one] <- fixed(p[one], 1)
     res[two] <- fixed(p[two], digits)
   }

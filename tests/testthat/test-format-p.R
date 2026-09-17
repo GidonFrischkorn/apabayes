@@ -73,6 +73,23 @@ test_that("apa_pd() prints and caps like the miniQ helper", {
   )
 })
 
+test_that("apa_pd(operator = TRUE) is consistent across both branches", {
+  # Finding 4 of the miniQmetrics acceptance test
+  # (local/findings-2026-09-16.md): the bare formatter could not be
+  # dropped into "*pd* {x}" because only the capped branch carried a
+  # relation. Decided (GF, 2026-09-16): fix both smallest findings (4, 6).
+  expect_identical(apa_pd(0.9874, operator = TRUE), "= .987")
+  expect_identical(apa_pd(0.5, operator = TRUE), "= .500")
+  expect_identical(apa_pd(0.9995, operator = TRUE), "> .999")
+  expect_identical(apa_pd(1, operator = TRUE), "> .999")
+  expect_identical(apa_pd(NA, operator = TRUE), NA_character_)
+  # symbol already includes the relation; operator adds nothing more.
+  expect_identical(
+    apa_pd(0.9874, symbol = TRUE, operator = TRUE),
+    apa_pd(0.9874, symbol = TRUE)
+  )
+})
+
 test_that("apa_prob() formats proportions and percentages", {
   expect_identical(apa_prob(0.1234), ".123")
   expect_identical(apa_prob(0.5, digits = 2), ".50")

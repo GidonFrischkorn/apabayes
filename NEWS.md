@@ -1,5 +1,41 @@
 # apabayes 0.0.0.9000
 
+* fix: `apa_tidy()` refuses a data frame or matrix too short to be a real
+  posterior instead of reporting a confident but meaningless estimate.
+  `bayestestR::describe_posterior()` already warns "the posterior is too
+  short, returning NAs" in this case; that warning is now promoted to an
+  error, because a 2-draw posterior cannot produce a reportable interval
+  and the caller was getting an estimate anyway (the mean of the "draws").
+  Found converting a real manuscript, where a stored 2 x 6 matrix of
+  per-model convergence summaries (max R-hat, min ESS) was silently read
+  as posterior draws.
+
+* fix: `apa_bf()` honours `digits` in `style = "auto"`'s scientific
+  regime; it always printed a one-decimal mantissa there regardless of
+  `digits`. `apa_bf(4.975034e14, digits = 2)` now returns
+  `4.98 × 10^14^`, not `5.0 × 10^14^`. This makes `apa_bf()` a true
+  drop-in for a caller's own two-decimal Bayes-factor formatter with no
+  `style =` needed.
+
+* feat: `apa_pd(operator = TRUE)` prepends `"= "` unless the value
+  already opens with its own relation from the floor or the cap (`.956`
+  becomes `= .956`; `> .999` is unchanged), so the result reads inside a
+  sentence that already names the statistic (`*pd* {x}`) without the
+  caller re-deriving which branch fired.
+
+* fix: a blavaan fit on which `parameters::model_parameters()` fails
+  upstream now re-raises naming `standardize = TRUE` as the path that
+  reads the posterior directly and does not hit the failure, rather than
+  passing the upstream message through unnamed.
+
+* docs: `?apa_table` states its scope explicitly — one row per parameter,
+  no pivot, no second estimate column — and the vignette "Reporting brms
+  models in apaquarto" gained a worked example carrying `apa_table()`
+  output through `tidyr::pivot_wider()` into a cross-tabulated design
+  table, plus a section naming five gaps `apa_inline()` and
+  `apabayes_tidy()` do not yet cover. All measured converting a real
+  manuscript (miniQmetrics) rather than invented.
+
 * feat: apabayes ships an apaquarto example and a vignette, and the test
   suite gained a gate that renders a document. `inst/apaquarto-example/`
   holds a minimal apaquarto manuscript with a README naming the two

@@ -14,6 +14,18 @@
 #' It is the table counterpart of [apa_inline()] and takes the same
 #' formatting options.
 #'
+#' @section Scope:
+#' `apa_table()` targets a model-parameter table: one row per parameter
+#' (or per hypothesis, model or pair, depending on the contract type),
+#' one column per statistic. It has no pivot and no second estimate
+#' column, so a table shaped by a design factor — one row per
+#' item-feature cell, one column per measurement occasion — or one that
+#' lays two samples' estimates side by side is outside it. Carry its
+#' tibble on into your own reshaping (`tidyr::pivot_wider()` and the
+#' like) and then into [apa7::apa_flextable()]; the vignette "Reporting
+#' brms models in apaquarto" has a worked example of exactly that,
+#' `apa_table()` output pivoted into a cross-tabulated design table.
+#'
 #' @section What is printed:
 #' A `parameters` table has one row per parameter: the label column
 #' (`Path` when every term is a structural-equation path, else
