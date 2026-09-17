@@ -60,6 +60,14 @@
   discovery, a sentence saying that a plain numeric data frame is read as
   draws, and the apaquarto 6.0.0 precondition for Typst.
 
+* internal: `table_parameters()` builds its `*pd*` and `% in ROPE`
+  columns through `share_columns()`, the helper the contrasts and
+  correlations tables already used, so a ROPE-formatting change cannot
+  reach one table and miss the most-used one. No output changes. The
+  short-draws guard in the draws route carries a comment naming the
+  upstream string it matches and the test that fails loudly if
+  bayestestR rewords it.
+
 * fix: a brms fit on which `parameters::model_parameters()` fails
   upstream now re-raises naming `apa_tidy(brms::as_draws_df(fit))` as the
   route that reads the draws directly and does not hit the failure, the

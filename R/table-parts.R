@@ -219,8 +219,6 @@ diagnostic_definitions <- function(stats) {
 # ---- parameters ----------------------------------------------------------
 
 table_parameters <- function(x, opts) {
-  rope_ci <- attr(x, "rope_ci", exact = TRUE)
-  rope_range <- attr(x, "rope_range", exact = TRUE)
   columns <- list()
   if (opts$group_rows) {
     titles <- group_titles(x)
@@ -245,16 +243,11 @@ table_parameters <- function(x, opts) {
   if (!is.null(interval)) {
     columns[[interval$header]] <- interval$cells
   }
-  if ("pd" %in% s) {
-    columns[["*pd*"]] <- align_cells(
-      apa_pd(x$pd, opts$digits_prob, markup = "md")
-    )
-  }
-  if ("rope" %in% s) {
-    # The unit lives in the header; the digits are apa_prob()'s own.
-    share <- apa_prob(x$rope_pct, percent = TRUE, markup = "md")
-    columns[["% in ROPE"]] <- align_cells(sub("%$", "", share))
-  }
+  # `*pd*` and `% in ROPE` are built once, here and for the contrasts and
+  # correlations tables: a ROPE-formatting change made in one place would
+  # otherwise miss the most-used table in the package.
+  shares <- share_columns(x, s, opts)
+  columns <- c(columns, shares$columns)
   bf_header <- markup("BF", "md", italic = TRUE, subscript = opts$bf_direction)
   if ("bf" %in% s) {
     # Not aligned: align_chr() counts the markup of `10^n^` as digits.
@@ -272,8 +265,7 @@ table_parameters <- function(x, opts) {
   definitions <- c(
     estimate$definitions,
     interval$definitions,
-    if ("pd" %in% s) "*pd* = probability of direction",
-    if ("rope" %in% s) rope_definition(rope_ci, rope_range, opts$digits),
+    shares$definitions,
     if ("bf" %in% s) bf_definition(bf_header, opts$bf_direction),
     diagnostic_definitions(s)
   )

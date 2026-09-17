@@ -327,6 +327,12 @@ describe_draws <- function(selected, centrality, ci, ci_level, rope,
   withCallingHandlers(
     as.data.frame(do.call(bayestestR::describe_posterior, args)),
     warning = function(w) {
+      # The only match on an upstream message string in the package, and
+      # the pattern ARCHITECTURE.md rejected for the `effects = "random"`
+      # guard because it would rot silently. It does not rot silently
+      # here: `test-extract-draws.R` asserts that a two-row posterior
+      # errors with "too few draws", so the day bayestestR rewords its
+      # warning the guard stops firing and that test fails loudly.
       if (grepl("too short", conditionMessage(w), fixed = TRUE)) {
         cli::cli_abort(
           c(
