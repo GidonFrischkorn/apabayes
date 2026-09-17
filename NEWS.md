@@ -1,5 +1,24 @@
 # apabayes 0.1.0
 
+* fix: a brms fit on which `parameters::model_parameters()` fails
+  upstream now re-raises naming `apa_tidy(brms::as_draws_df(fit))` as the
+  route that reads the draws directly and does not hit the failure, the
+  same shape as the blavaan re-raise below. The trigger is any brms model
+  with a matrix response and a `trials()` term (`family = multinomial()`,
+  and so every bmm M3 fit): insight 1.5.4's `get_data()` compares a
+  two-name response with `&&`, an error since R 4.3.0, and every easystats
+  entry point goes through it. Measured on a real bmm M3 fit, a fresh
+  40-row `brm()` without bmm, and a real bmm diffusion (CSWald) fit,
+  which is unaffected and reports `component` as the bmm model parameter
+  with no bmm code. bmm fits are now in the test suite (bmm in Suggests).
+
+* fix: `apa_tidy_diagnostics()` and `apa_convergence()` count divergent
+  transitions on a brms fit sampled through cmdstanr. brms stores such a
+  fit as a `stanfit` whose method is named `"sample"` (cmdstan's word)
+  where rstan writes `"sampling"`, and the reader took the difference for
+  "no sampler record" and returned `NA`. bmm samples through cmdstanr
+  whenever it is installed, so every bmm fit reported no record.
+
 * fix: `apa_tidy()` refuses a data frame or matrix too short to be a real
   posterior instead of reporting a confident but meaningless estimate.
   `bayestestR::describe_posterior()` already warns "the posterior is too

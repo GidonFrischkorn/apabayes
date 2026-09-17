@@ -34,6 +34,7 @@ Imports:
 Suggests:
     BayesFactor,
     blavaan,
+    bmm,
     brms,
     correlation,
     effectsize,

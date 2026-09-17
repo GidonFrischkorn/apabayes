@@ -12,7 +12,16 @@
 #'   Estimates, interval, pd and the ROPE percentage come from
 #'   [parameters::model_parameters()], R-hat and both ESS columns from
 #'   [bayestestR::diagnostic_posterior()]; apabayes computes no summary
-#'   of its own.
+#'   of its own. A bmm model parameter is a brms distributional
+#'   parameter, so `component` carries it (`drift`, `kappa`, ...).
+#'
+#'   One shape is out of reach upstream: a model whose response is a
+#'   matrix with a `trials()` term (`family = multinomial()`, which is
+#'   every bmm M3 fit) fails inside `insight::get_data()` on R 4.3 or
+#'   newer, before any number is computed. The method then aborts
+#'   naming `apa_tidy(brms::as_draws_df(fit))`, which reads the draws
+#'   directly; [apa_tidy_diagnostics()] and [apa_convergence()] do not go
+#'   through easystats and are unaffected.
 #'
 #' @param effects Which parameters to report, passed to
 #'   [parameters::model_parameters()]: `"fixed"` (the easystats default,
@@ -48,9 +57,30 @@ apa_tidy.brmsfit <- function(x,
   ci <- rlang::arg_match(ci)
   rope <- check_route_args(ci_level, diagnostics, rope, rope_ci)
 
-  mp <- call_model_parameters(
-    x, centrality, ci, ci_level, rope, rope_ci,
-    effects = effects, component = component
+  mp <- tryCatch(
+    call_model_parameters(
+      x, centrality, ci, ci_level, rope, rope_ci,
+      effects = effects, component = component
+    ),
+    error = function(cnd) {
+      # Measured session 34 (spec-apa_tidy_brmsfit-upstream.md): on any
+      # brms fit whose response is a matrix with a trials() term
+      # (family = multinomial(), so every bmm M3 fit) insight 1.5.4's
+      # get_data() errors before a number is computed, identically on
+      # the bare easystats call, with any arguments. The same shape as
+      # the blavaan re-raise (finding 6): apabayes cannot fix it, so it
+      # names the route that does not go through easystats.
+      cli::cli_abort(
+        c(
+          "{.pkg parameters} could not summarise this {.cls {class(x)[1]}}.",
+          i = "{.code apa_tidy(brms::as_draws_df(fit))} reads the draws
+               directly and does not hit this; it reports every sampled
+               quantity under its brms name and fills no
+               {.field component}."
+        ),
+        parent = cnd
+      )
+    }
   )
   terms <- resolve_parameters_variables(variables, mp$Parameter)
   out <- parameters_rows(mp, terms, labels, centrality, ci, ci_level)
@@ -222,9 +252,16 @@ sampler_divergences <- function(x) {
 # (meanfield says "variational", where `get_sampler_params()` aborts),
 # and every chain records `divergent__` (Fixed_param and static HMC do
 # not). Anything else has no count, which is not a count of zero.
+#
+# "sample" is the same method under cmdstan's name: brms with
+# `backend = "cmdstanr"` (bmm's default whenever cmdstanr is installed)
+# stores a stanfit built by `rstan::read_stan_csv()`, whose stan_args
+# copy cmdstan's `method = sample`. Measured session 34
+# (local/probes/probe_bmm7_backend_divergences.R): the sampler
+# parameters are there and `brms::nuts_params()` counts them.
 stanfit_divergences <- function(x) {
   sampled <- isTRUE(x@mode == 0) &&
-    identical(x@stan_args[[1]]$method, "sampling")
+    isTRUE(x@stan_args[[1]]$method %in% c("sampling", "sample"))
   if (!sampled) {
     return(NA_integer_)
   }

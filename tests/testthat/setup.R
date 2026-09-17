@@ -26,32 +26,97 @@ fixture <- function(name) {
 # (measured, spec-apa_tidy_brmsfit.md point 3), so the probe pair alone
 # cannot exercise the `effects` and `group` columns of the contract. It
 # needs neither save_pars nor sample_prior: no Bayes-factor route uses it.
-test_brms_fit <- function(name = c("full", "reduced", "mixed")) {
+#
+# "multinomial" (Y | trials(size) ~ x, family = multinomial()) was added
+# in session 34 (spec-apa_tidy_brmsfit-upstream.md): a matrix response
+# with a trials() term is the shape on which insight 1.5.4's get_data()
+# fails, and the suite needs the real trigger rather than a mock so that
+# the re-raise loses its reason the day insight fixes it. Made-up counts,
+# no random numbers, 21 s measured.
+test_brms_fit <- function(name = c("full", "reduced", "mixed", "multinomial")) {
   name <- match.arg(name)
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("brms")
   if (!is.null(.apabayes_fit_cache[[name]])) {
     return(.apabayes_fit_cache[[name]])
   }
-  data <- mtcars
-  data$cyl_f <- factor(data$cyl)
-  formula <- switch(name,
-    full = mpg ~ wt + am,
-    reduced = mpg ~ wt,
-    mixed = mpg ~ wt + (1 | cyl_f)
-  )
-  args <- list(
-    formula,
-    data = data,
-    prior = brms::set_prior("normal(0, 10)", class = "b"),
-    chains = 2, iter = 1000, seed = 1, refresh = 0, silent = 2
-  )
-  if (name != "mixed") {
-    args$save_pars <- brms::save_pars(all = TRUE)
-    args$sample_prior <- "yes"
+  if (name == "multinomial") {
+    data <- data.frame(x = rep(c(0, 1), each = 20), size = 10L)
+    data$Y <- cbind(
+      a = rep(c(3L, 5L), 20), b = rep(c(4L, 2L), 20), c = rep(c(3L, 3L), 20)
+    )
+    args <- list(
+      brms::bf(Y | trials(size) ~ x),
+      data = data, family = brms::multinomial(),
+      chains = 2, iter = 1000, seed = 1, refresh = 0, silent = 2
+    )
+  } else {
+    data <- mtcars
+    data$cyl_f <- factor(data$cyl)
+    formula <- switch(name,
+      full = mpg ~ wt + am,
+      reduced = mpg ~ wt,
+      mixed = mpg ~ wt + (1 | cyl_f)
+    )
+    args <- list(
+      formula,
+      data = data,
+      prior = brms::set_prior("normal(0, 10)", class = "b"),
+      chains = 2, iter = 1000, seed = 1, refresh = 0, silent = 2
+    )
+    if (name != "mixed") {
+      args$save_pars <- brms::save_pars(all = TRUE)
+      args$sample_prior <- "yes"
+    }
   }
-  fit <- suppressMessages(do.call(brms::brm, args))
+  fit <- suppressMessages(suppressWarnings(do.call(brms::brm, args)))
   .apabayes_fit_cache[[name]] <- fit
+  fit
+}
+
+# bmm fits (session 34, spec-apa_tidy_brmsfit-upstream.md). Both are the
+# first fitted bmm objects the suite has ever held; until then the bmm
+# claim rested on the class vector of a mock fit.
+#
+# "m3" is a memory measurement model on bmm's own
+# oberauer_lewandowsky_2019_e1: a multinomial brms model with a matrix
+# response, the shape that fails upstream (8 s measured). "sdm" is the
+# signal discrimination model on simulated data: a numeric response, so
+# it goes through the brmsfit route untouched and shows `component`
+# carrying the bmm model parameter (6 s measured). The RNG state for the
+# sdm data is local; nothing here calls set.seed().
+test_bmm_fit <- function(name = c("m3", "sdm")) {
+  name <- match.arg(name)
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("bmm")
+  key <- paste0("bmm_", name)
+  if (!is.null(.apabayes_fit_cache[[key]])) {
+    return(.apabayes_fit_cache[[key]])
+  }
+  args <- switch(name,
+    m3 = list(
+      formula = bmm::bmf(c ~ 1, a ~ 1),
+      data = bmm::oberauer_lewandowsky_2019_e1,
+      model = bmm::m3(
+        resp_cats = c("corr", "other", "npl"),
+        num_options = c("n_corr", "n_other", "n_npl"),
+        choice_rule = "softmax", version = "ss"
+      )
+    ),
+    sdm = list(
+      formula = bmm::bmf(c ~ 1, kappa ~ 1),
+      data = data.frame(
+        y = withr::with_seed(1, bmm::rsdm(200, c = 3, kappa = 5))
+      ),
+      model = bmm::sdm(resp_error = "y")
+    )
+  )
+  args <- c(
+    args,
+    list(chains = 2, iter = 1000, seed = 1, refresh = 0, silent = 2)
+  )
+  fit <- suppressMessages(suppressWarnings(do.call(bmm::bmm, args)))
+  .apabayes_fit_cache[[key]] <- fit
   fit
 }
 

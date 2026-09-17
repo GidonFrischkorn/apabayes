@@ -415,3 +415,56 @@ test_that("a selection with no reportable parameter aborts", {
     "no parameters to report"
   )
 })
+
+# ---- an upstream failure: the multinomial response ---------------------
+
+test_that("a multinomial fit's upstream failure names the draws route", {
+  # insight 1.5.4's `.prepare_get_data()` errors on every brms fit whose
+  # response is a matrix with a trials() term (measured session 34,
+  # local/probes/probe_bmm4_fresh_fits.R; issue draft
+  # local/insight-issue-draft-multinomial-get_data.md), so
+  # model_parameters() fails on every multinomial brms fit and every
+  # bmm M3 fit, with any arguments. The route cannot fix insight; it
+  # names the path that works, as the blavaan route does (finding 6).
+  fit <- test_brms_fit("multinomial")
+
+  expect_error(
+    apa_tidy(fit), "apa_tidy(brms::as_draws_df(fit))",
+    fixed = TRUE
+  )
+  expect_error(apa_tidy(fit), "parameters")
+  expect_error(apa_tidy(fit), class = "rlang_error")
+  cnd <- rlang::catch_cnd(apa_tidy(fit), "error")
+  expect_s3_class(cnd$parent, "error")
+
+  # The named route works and keeps the brms names; no component.
+  out <- apa_tidy(brms::as_draws_df(fit))
+  expect_true(is_apabayes_tidy(out))
+  expect_identical(attr(out, "type"), "parameters")
+  expect_true(all(c("b_mub_x", "b_muc_x") %in% out$term))
+  expect_true(all(is.na(out$component)))
+
+  # Diagnostics and the convergence statement do not go through easystats.
+  expect_no_error(apa_tidy_diagnostics(fit))
+  expect_no_error(apa_convergence(fit))
+})
+
+test_that("the multinomial failure is still upstream", {
+  # A regression guard on the trigger, like "model_parameters(standardize
+  # =) still aborts upstream" for blavaan: when this starts passing,
+  # insight has fixed it and the workaround note can go; the re-raise
+  # stays, covered by the mocked test below.
+  fit <- test_brms_fit("multinomial")
+  expect_error(parameters::model_parameters(fit), "logical(1)", fixed = TRUE)
+})
+
+test_that("any model_parameters() failure on a brmsfit is re-raised", {
+  fit <- test_brms_fit("full")
+  local_mocked_bindings(
+    model_parameters = function(...) stop("something upstream"),
+    .package = "parameters"
+  )
+  expect_error(apa_tidy(fit), "something upstream")
+  expect_error(apa_tidy(fit), "as_draws_df", fixed = TRUE)
+  expect_error(apa_tidy(fit), class = "rlang_error")
+})

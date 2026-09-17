@@ -167,3 +167,19 @@ test_that("a sampled stanfit without divergent__ counts NA", {
   )
   expect_identical(sampler_divergences(fit), NA_integer_)
 })
+
+test_that("a stanfit written by cmdstan (method 'sample') is counted", {
+  # Measured session 34 (local/probes/probe_bmm7_backend_divergences.R):
+  # brms with backend = "cmdstanr" stores a stanfit built by
+  # rstan::read_stan_csv() whose @stan_args method is "sample", cmdstan's
+  # name, where rstan writes "sampling". bmm samples through cmdstanr
+  # whenever it is installed, so every bmm fit was reported as having no
+  # divergence record. An rstan stanfit with the method renamed carries
+  # the same sampler parameters and must count the same.
+  fit <- test_brms_fit("full")
+  sf <- fit$fit
+  sf@stan_args[[1]]$method <- "sample"
+
+  expect_false(is.na(sampler_divergences(sf)))
+  expect_identical(sampler_divergences(sf), sampler_divergences(fit$fit))
+})

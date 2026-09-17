@@ -296,7 +296,16 @@ fit is refused.
 Estimates, interval, pd and the ROPE percentage come from
 \code{\link[parameters:model_parameters]{parameters::model_parameters()}}, R-hat and both ESS columns from
 \code{\link[bayestestR:diagnostic_posterior]{bayestestR::diagnostic_posterior()}}; apabayes computes no summary
-of its own.
+of its own. A bmm model parameter is a brms distributional
+parameter, so \code{component} carries it (\code{drift}, \code{kappa}, ...).
+
+One shape is out of reach upstream: a model whose response is a
+matrix with a \code{trials()} term (\code{family = multinomial()}, which is
+every bmm M3 fit) fails inside \code{insight::get_data()} on R 4.3 or
+newer, before any number is computed. The method then aborts
+naming \code{apa_tidy(brms::as_draws_df(fit))}, which reads the draws
+directly; \code{\link[=apa_tidy_diagnostics]{apa_tidy_diagnostics()}} and \code{\link[=apa_convergence]{apa_convergence()}} do not go
+through easystats and are unaffected.
 
 \item \code{apa_tidy(brmshypothesis)}: The output of \code{\link[brms:hypothesis]{brms::hypothesis()}}. Estimates,
 interval, evidence ratio and posterior probability are brms's own;
