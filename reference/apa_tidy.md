@@ -669,11 +669,13 @@ apa_tidy(emmeans::contrast(means, "pairwise"), rope = c(-1, 1))
 #> 1 cyl_f4 - cyl_… NA         6.9   3.93    9.81 hdi           0.95     1        0
 #> 2 cyl_f4 - cyl_… NA        11.6   9.02   14.1  hdi           0.95     1        0
 #> 3 cyl_f6 - cyl_… NA         4.7   4.30    5.09 hdi           0.95     1        0
+if (FALSE) { # rlang::is_installed(c("modelbased", "rstanarm", "marginaleffects", "collapse"))
 
-# `marginaleffects` is guarded for as well as `modelbased`: it is a
-# Suggests of modelbased rather than a dependency, and
-# `estimate_contrasts()` does its work through it. The version it
-# needs is in `DESCRIPTION`.
+# Four packages are guarded for, not one: `estimate_contrasts()` does
+# its work through marginaleffects, a Suggests of modelbased rather
+# than a dependency, and marginaleffects does this path's through
+# collapse. Measured on CI, one run apart. The version modelbased
+# asks of marginaleffects is in `DESCRIPTION`.
 # A modelbased table is reported as it stands. It records its interval
 # only in its call: none named there is modelbased's equal-tailed
 # default, and a variable there has to be named with `ci =`.
@@ -684,24 +686,11 @@ fit <- rstanarm::stan_glm(
   data = cars, chains = 2, iter = 1000, seed = 1, refresh = 0
 )
 apa_tidy(modelbased::estimate_contrasts(fit, contrast = "cyl_f"))
-#> Error: Sorry, calculating marginal contrasts failed with following error:
-#>   Package `collapse` required for this function to work. Please install it
-#>   by running `install.packages("collapse")`.
 method <- "hdi"
 means <- modelbased::estimate_means(fit, by = "cyl_f", ci_method = method)
-#> Error: Sorry, calculating marginal means failed with following error:
-#>   Package `collapse` required for this function to work. Please install it
-#>   by running `install.packages("collapse")`.
 apa_tidy(means, ci = "hdi")
-#> # apabayes tidy table: contrasts (3 rows)
-#> # median, 95% HDI; source: emmGrid
-#> # A tibble: 3 × 10
-#>   contrast group estimate ci_low ci_high ci_method ci_level    pd rope_pct cyl_f
-#>   <chr>    <chr>    <dbl>  <dbl>   <dbl> <chr>        <dbl> <dbl>    <dbl> <chr>
-#> 1 cyl_f4   NA        26.7   24.8    28.7 hdi           0.95     1       NA 4    
-#> 2 cyl_f6   NA        19.8   15.0    24.8 hdi           0.95     1       NA 6    
-#> 3 cyl_f8   NA        15.1   10.6    19.7 hdi           0.95     1       NA 8    
 # }
+}
 
 # Bayesian correlations. The table records neither its interval nor
 # its centrality, so `ci` and `centrality` name them; the defaults are
@@ -716,9 +705,9 @@ apa_tidy(r)
 #> # A tibble: 3 × 17
 #>   term    var1  var2  group estimate ci_low ci_high ci_method ci_level    pd
 #>   <chr>   <chr> <chr> <chr>    <dbl>  <dbl>   <dbl> <chr>        <dbl> <dbl>
-#> 1 mpg~~wt mpg   wt    NA      -0.812 -0.906  -0.661 hdi           0.95     1
-#> 2 mpg~~hp mpg   hp    NA      -0.707 -0.852  -0.503 hdi           0.95     1
-#> 3 wt~~hp  wt    hp    NA       0.588  0.369   0.779 hdi           0.95     1
+#> 1 mpg~~wt mpg   wt    NA      -0.812 -0.907  -0.661 hdi           0.95     1
+#> 2 mpg~~hp mpg   hp    NA      -0.709 -0.851  -0.514 hdi           0.95     1
+#> 3 wt~~hp  wt    hp    NA       0.586  0.369   0.774 hdi           0.95     1
 #> # ℹ 7 more variables: rope_pct <dbl>, bf <dbl>, n <dbl>, method <chr>,
 #> #   prior_distribution <chr>, prior_location <dbl>, prior_scale <dbl>
 r_eti <- correlation::correlation(
@@ -731,7 +720,7 @@ apa_tidy(r_eti, ci = "eti")
 #> # A tibble: 1 × 17
 #>   term    var1  var2  group estimate ci_low ci_high ci_method ci_level    pd
 #>   <chr>   <chr> <chr> <chr>    <dbl>  <dbl>   <dbl> <chr>        <dbl> <dbl>
-#> 1 mpg~~wt mpg   wt    NA      -0.818 -0.905  -0.667 eti           0.95     1
+#> 1 mpg~~wt mpg   wt    NA      -0.820 -0.905  -0.667 eti           0.95     1
 #> # ℹ 7 more variables: rope_pct <dbl>, bf <dbl>, n <dbl>, method <chr>,
 #> #   prior_distribution <chr>, prior_location <dbl>, prior_scale <dbl>
 
@@ -747,20 +736,20 @@ apa_tidy(bf)
 #> # A tibble: 5 × 8
 #>   model                    bf log_bf denominator method post_prob    error name 
 #>   <chr>                 <dbl>  <dbl> <lgl>       <chr>      <dbl>    <dbl> <chr>
-#> 1 Intercept only       1   e0   0    TRUE        JZS (…   3.01e-6 NA       Inte…
-#> 2 am_f                 8.66e1   4.46 FALSE       JZS (…   2.61e-4  1.88e-8 mpg …
-#> 3 vs_f                 5.29e2   6.27 FALSE       JZS (…   1.60e-3  1.46e-9 mpg …
-#> 4 am_f + vs_f          2.04e5  12.2  FALSE       JZS (…   6.16e-1  1.11e-2 mpg …
-#> 5 am_f + vs_f + am_f:… 1.27e5  11.8  FALSE       JZS (…   3.83e-1  3.62e-2 mpg …
+#> 1 Intercept only       1   e0   0    TRUE        JZS (…   3.13e-6 NA       Inte…
+#> 2 am_f                 8.66e1   4.46 FALSE       JZS (…   2.71e-4  1.88e-8 mpg …
+#> 3 vs_f                 5.29e2   6.27 FALSE       JZS (…   1.66e-3  1.46e-9 mpg …
+#> 4 am_f + vs_f          1.93e5  12.2  FALSE       JZS (…   6.05e-1  9.60e-3 mpg …
+#> 5 am_f + vs_f + am_f:… 1.26e5  11.7  FALSE       JZS (…   3.93e-1  3.44e-2 mpg …
 apa_tidy(bayestestR::bayesfactor_inclusion(bf))
 #> # apabayes tidy table: bf_inclusion (3 rows)
 #> # source: bayestestRBF
 #> # A tibble: 3 × 5
 #>   term      p_prior p_posterior      bf log_bf
 #>   <chr>       <dbl>       <dbl>   <dbl>  <dbl>
-#> 1 am_f          0.6       0.998  416.    6.03 
-#> 2 vs_f          0.6       1.000 2524.    7.83 
-#> 3 am_f:vs_f     0.2       0.383    2.48  0.907
+#> 1 am_f          0.6       0.998  401.    5.99 
+#> 2 vs_f          0.6       1.000 2430.    7.80 
+#> 3 am_f:vs_f     0.2       0.393    2.59  0.953
 bf_t <- BayesFactor::ttestBF(formula = mpg ~ am_f, data = cars)
 apa_tidy(BayesFactor::posterior(bf_t, iterations = 500, progress = FALSE))
 #> # apabayes tidy table: parameters (5 rows)
@@ -768,11 +757,11 @@ apa_tidy(BayesFactor::posterior(bf_t, iterations = 500, progress = FALSE))
 #> # A tibble: 5 × 18
 #>   term    label estimate  ci_low ci_high ci_method ci_level    pd rope_pct  rhat
 #>   <chr>   <chr>    <dbl>   <dbl>   <dbl> <chr>        <dbl> <dbl>    <dbl> <dbl>
-#> 1 mu      mu       20.7   19.0    22.4   eti           0.95     1       NA 1.01 
-#> 2 beta (… beta…    -6.64 -10.6    -2.80  eti           0.95     1       NA 0.998
-#> 3 sig2    sig2     24.9   15.3    43.8   eti           0.95     1       NA 1.00 
-#> 4 delta   delta    -1.34  -2.11   -0.484 eti           0.95     1       NA 0.998
-#> 5 g       g         1.66   0.174  51.0   eti           0.95     1       NA 0.999
+#> 1 mu      mu       20.8   18.8    22.4   eti           0.95 1           NA 1.000
+#> 2 beta (… beta…    -6.62 -10.3    -2.50  eti           0.95 0.998       NA 0.999
+#> 3 sig2    sig2     25.4   15.8    45.4   eti           0.95 1           NA 1.00 
+#> 4 delta   delta    -1.30  -2.14   -0.433 eti           0.95 0.998       NA 1.00 
+#> 5 g       g         1.60   0.211  38.8   eti           0.95 1           NA 0.998
 #> # ℹ 8 more variables: ess_bulk <dbl>, ess_tail <dbl>, bf <dbl>,
 #> #   component <chr>, group <chr>, effects <chr>, std <lgl>, p <dbl>
 ```
