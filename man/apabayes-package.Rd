@@ -8,7 +8,7 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Inline strings and tables in American Psychological Association style, seventh edition, for Bayesian regression models fitted with 'brms' and 'bmm', structural equation models fitted with 'lavaan' and 'blavaan', posterior hypothesis tests, leave-one-out model comparisons, Bayes factor comparisons, posterior contrasts and Bayesian correlations. Every number comes from the 'easystats' packages ('parameters', 'bayestestR', 'performance', 'insight'); 'apabayes' selects, arranges and formats. Tables extend the 'apa7' package so that they render through 'apa_flextable()' in the 'apaquarto' Quarto extension to PDF, Word, HTML and Typst; inline objects follow the 'papaja' result shape.
+Inline strings and tables in American Psychological Association style, seventh edition, for Bayesian regression models fitted with 'brms' and 'bmm', structural equation models fitted with 'lavaan' and 'blavaan', posterior hypothesis tests, leave-one-out model comparisons, Bayes factor comparisons, posterior contrasts and Bayesian correlations. Numbers come from the model's own package and from the 'easystats' packages ('parameters', 'bayestestR', 'insight'); 'apabayes' selects, arranges and formats them, and every value it derives itself is documented on the route that reports it. Tables extend the 'apa7' package so that they render through 'apa_flextable()' in the 'apaquarto' Quarto extension to PDF, Word, HTML and Typst; inline objects follow the 'papaja' result shape.
 }
 \seealso{
 Useful links:

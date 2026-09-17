@@ -43,6 +43,23 @@
   constructor's, where the caller chooses the label; a subset of a valid
   table stays valid.
 
+* docs: the package's own claims are checked against the package. The
+  `Description` field and the README no longer name `performance` as a
+  source of numbers — it is called nowhere in `R/` and is in neither
+  `Imports` nor `Suggests` — and no longer say every number comes from
+  easystats, which six deliberate non-easystats sources contradict
+  (`posterior::summarise_draws()`, `lavaan::fitMeasures()`,
+  `blavaan::blavFitIndices()`, `blavaan::standardizedPosterior()`,
+  `rstan::get_sampler_params()`, and brms's own hypothesis table). The
+  README's worked example is now an **evaluated** chunk reading a stored
+  object, so its output is the package's rather than hand-written: the
+  block had printed an ASCII hyphen where apabayes emits U+2212, and the
+  same unevaluated block had carried a call to a function that never
+  existed. The README also gained the `apabayes_tidy()` stored-summary
+  path, which the acceptance test called its single most useful
+  discovery, a sentence saying that a plain numeric data frame is read as
+  draws, and the apaquarto 6.0.0 precondition for Typst.
+
 * fix: a brms fit on which `parameters::model_parameters()` fails
   upstream now re-raises naming `apa_tidy(brms::as_draws_df(fit))` as the
   route that reads the draws directly and does not hit the failure, the

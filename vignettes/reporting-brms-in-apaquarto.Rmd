@@ -28,7 +28,8 @@ shown works identically on a live fit.
 `apa_tidy()` is the only function that knows about model classes. It takes
 a `brmsfit`, a `lavaan` or `blavaan` fit, a `brms` hypothesis test, a
 `loo` comparison, a Bayes factor object, posterior contrasts, a Bayesian
-correlation — thirteen routes in all — and returns one shape:
+correlation — fourteen object families in all, listed on `?apa_tidy` —
+and returns one shape:
 
 ```{r}
 #| eval: false
@@ -70,6 +71,36 @@ The object it returns follows papaja's `apa_results` shape, so
 `$estimate`, `$statistic` and `$full_result` are all there if you want a
 part rather than the whole.
 
+`ci_label` controls the interval's label, and `NULL` prints the brackets
+bare, for a sentence that lists several estimates:
+
+```{r}
+apa_inline(posterior, "wt", stats = character(), ci_label = NULL)
+```
+
+## The number behind the string
+
+Some sentences need the value rather than the string: a number that goes
+into arithmetic, into a comparison, or into wording you format yourself.
+`apa_value()` addresses a row exactly as `apa_inline()` does and returns
+what is in the column:
+
+```{r}
+apa_value(posterior, "wt")
+apa_value(posterior, "wt", column = "ci_high")
+```
+
+It is the alternative to a hand-rolled lookup helper, which indexes by
+position and reports the wrong row the day the table changes. The column
+defaults to the value the table's type is about — `estimate` here,
+`elpd_diff` on a `loo` table, `bf` on a Bayes-factor one — and nothing is
+rounded or marked up, so a value that lands in prose goes through the
+format layer on the way:
+
+```{r}
+apa_num(apa_value(posterior, "wt") * 2)
+```
+
 ## A table and its note
 
 `apa_table()` returns a data frame whose columns are already formatted and
@@ -107,6 +138,15 @@ comparison <- readRDS(
 )
 apa_table(comparison)
 ```
+
+`loo::loo_compare()` signs every difference against the model with the
+highest ELPD, so a sentence that reports how far a baseline trails would
+have to flip the sign by hand. `apa_tidy(x, reference = "baseline")`
+takes the differences from that model instead, and the model loo
+referenced then prints a positive ΔELPD. The standard errors that
+survive are the ones loo measured: a `compare.loo` object does not carry
+the pointwise ELPDs any other pair would need, so those are `NA` and the
+pair is compared with `loo::loo_compare()` directly.
 
 ## Beyond one row per parameter
 
@@ -199,25 +239,14 @@ currently reaches in one call. Measured against a real manuscript
 conversion rather than invented, and scoped for a future release rather
 than silently absent:
 
-- **A bare-bracket interval** (`.57 [.46, .67]`, no `CrI`/`HDI` label).
-  `ci_label = NULL` drops the label but keeps the comma before the
-  interval (`.57, [.46, .67]`). Build the string from `$estimate` and
-  `$full_result` by hand until this lands.
 - **A single statistic without the estimate** — quoting only a Bayes
   factor or a *pd* where the sentence has already named the quantity.
-  `apa_inline()` always includes the estimate; read the column
-  (`t$bf10`, `t$pd`) and format it with `apa_bf()` or `apa_pd()`
-  directly.
-- **A signed or reference-flipped LOO difference.** `apa_inline()` on a
-  `loo` table always signs ΔELPD from the best model; a sentence that
-  states how far a *different* model trails, unsigned, has no
-  `reference =` or `abs` argument yet. Read `$elpd_diff` and `$se` and
-  compose the sentence directly.
-- **`apabayes_tidy(type = "sem_fit")` does not check that its columns
-  hold fit indices.** A table that merely has a `model` column — a
-  `loo` comparison, say — is accepted, and reports every index as
-  empty rather than refusing. Pass only tables you built for this
-  contract.
+  `apa_inline()` always includes the estimate; take the value with
+  `apa_value(t, term, column = "bf10")` and format it with `apa_bf()`
+  or `apa_pd()`.
+- **`*r*` for every correlation method.** A Bayesian Spearman or Kendall
+  correlation prints `*r*`, where APA sets `*r*~s~` or `*ρ*`; the table's
+  note names the method the coefficient came from.
 - **No route reads a named numeric vector** — the natural shape of
   `blavaan::blavFitIndices()` saved on its own. Build a one-row data
   frame with the contract's column names (`ppp`, `brmsea`,

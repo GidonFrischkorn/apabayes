@@ -51,14 +51,16 @@ one, which 301-redirects to it.
 ## What the local check covers, and what it does not
 
 * Tests run with `NOT_CRAN=true`, so the live `brms`, `rstan`, `lavaan`
-  and `blavaan` fits are fitted rather than skipped: 3445 passing, 0
-  failures, 0 skipped, in 162 s.
+  and `blavaan` fits are fitted rather than skipped: 3462 passing, 0
+  failures, 0 warnings, **2 skipped** — the two render tests below, which
+  need `APABAYES_RENDER_TEST` — in 209 s (2026-09-17).
 * Coverage is 100 % of every file in `R/`, measured with `NOT_CRAN=true`.
 * `tests/testthat/test-render.R` renders the package's output to all four
   apaquarto formats and reads it back. It is **opt-in behind
   `APABAYES_RENDER_TEST` and therefore skipped on CRAN**, because it needs
   Quarto, the apaquarto extension, a LaTeX toolchain and `pdftotext`. It
-  skips with its reason wherever those are absent.
+  skips with its reason wherever those are absent. Run separately on
+  2026-09-17 against this tree: 76 expectations, 0 skips, 0 failures.
 * Every heavy dependency is in `Suggests` and every test that needs one is
   guarded by `skip_if_not_installed()`, so the suite runs on a machine with
   only the `Imports` installed.
