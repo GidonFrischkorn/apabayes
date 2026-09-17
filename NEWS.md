@@ -1,5 +1,19 @@
 # apabayes 0.1.0
 
+* feat: `apa_value()` reads one value out of a tidy table. It addresses a
+  row exactly as `apa_inline()` does — by term, by label, by the two
+  sides of a structural-equation path, by a correlation's pair in either
+  order — and returns the number rather than the string, for a value that
+  goes into arithmetic, into a comparison, or into wording the author
+  formats themselves. `column` names the column and defaults to the value
+  the table's type is about (`estimate`, `elpd_diff` on a `loo` table,
+  `bf` on a Bayes-factor one); a column that is `NA` on every addressed
+  row is an error, because `NA` reaching a manuscript is the defect the
+  refusal exists to stop. It replaces the hand-rolled lookup helper that
+  indexes by position and reports the wrong row the day the table
+  changes: 29 of the 43 sites that stayed hand-rolled in a real
+  manuscript conversion were that request.
+
 * feat: `apa_tidy()` on a `loo::loo_compare()` result takes
   `reference =`, the model the ELPD differences are taken from. loo signs
   every difference against the model with the highest ELPD, so a sentence

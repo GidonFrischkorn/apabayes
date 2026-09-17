@@ -162,7 +162,8 @@
 #' @inheritParams apa_num
 #'
 #' @return An [apa_results] object with one string per reported row.
-#' @seealso [apa_results] for the object, [apa_tidy()] for the tables.
+#' @seealso [apa_results] for the object, [apa_tidy()] for the tables,
+#'   [apa_value()] for the number behind the string.
 #' @examples
 #' t <- apabayes_tidy(
 #'   data.frame(

@@ -17,6 +17,7 @@ reference:
   desc: One estimate, addressed by name, as an APA string.
   contents:
   - apa_inline
+  - apa_value
   - is_apa_results
   - apabayes-papaja
 - title: Tables

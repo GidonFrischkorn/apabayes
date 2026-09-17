@@ -246,5 +246,6 @@ apa_inline(fit, "visual", "x2", op = "=~", standardize = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{apa_results} for the object, \code{\link[=apa_tidy]{apa_tidy()}} for the tables.
+\link{apa_results} for the object, \code{\link[=apa_tidy]{apa_tidy()}} for the tables,
+\code{\link[=apa_value]{apa_value()}} for the number behind the string.
 }
