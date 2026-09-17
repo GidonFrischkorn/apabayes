@@ -7,6 +7,14 @@
   prints the brackets after a comma: that is the table's silence about
   its own interval, not something the caller asked for.
 
+* fix: `apabayes_tidy(type = "sem_fit")` requires at least one fit index.
+  The `"sem_fit"` contract asked only for a `model` column, which a LOO
+  comparison also has, so a model-comparison table was accepted as a
+  table of fit indices with every index `NA`, and `apa_inline()` then
+  reported `NA` into a manuscript instead of refusing. The check is the
+  constructor's, where the caller chooses the label; a subset of a valid
+  table stays valid.
+
 * fix: a brms fit on which `parameters::model_parameters()` fails
   upstream now re-raises naming `apa_tidy(brms::as_draws_df(fit))` as the
   route that reads the draws directly and does not hit the failure, the

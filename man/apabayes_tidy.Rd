@@ -136,6 +136,18 @@ re-validates on the way, so a table you have edited can carry the
 class without satisfying the contract. Every apabayes function that
 consumes a tidy table therefore validates it on entry;
 \code{validate_apabayes_tidy()} is that check.
+
+The contracts check column names and types, not content, with one
+exception: a \code{"sem_fit"} table must carry at least one non-missing fit
+index (\code{chisq}, \code{cfi}, \code{tli}, \code{rmsea}, \code{srmr}, \code{ppp}, \code{brmsea},
+\code{bgammahat}; the interval bounds and \code{df} qualify an index and are not
+one). \code{"sem_fit"} is the one contract whose required column — \code{model}
+— is generic enough to belong to another type's table, and a model
+comparison accepted as a table of fit indices reports every index as
+\code{NA} rather than refusing. The check runs in the constructor, where
+the caller chooses the type, and not in \code{validate_apabayes_tidy()}, so
+that a subset of a valid table stays valid; a zero-row table is
+exempt, as it is for every other type.
 }
 
 \examples{

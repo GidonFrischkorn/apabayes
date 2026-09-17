@@ -280,6 +280,18 @@ check_ci_level <- function(x, allow_na = TRUE, strict = FALSE,
 #' consumes a tidy table therefore validates it on entry;
 #' `validate_apabayes_tidy()` is that check.
 #'
+#' The contracts check column names and types, not content, with one
+#' exception: a `"sem_fit"` table must carry at least one non-missing fit
+#' index (`chisq`, `cfi`, `tli`, `rmsea`, `srmr`, `ppp`, `brmsea`,
+#' `bgammahat`; the interval bounds and `df` qualify an index and are not
+#' one). `"sem_fit"` is the one contract whose required column — `model`
+#' — is generic enough to belong to another type's table, and a model
+#' comparison accepted as a table of fit indices reports every index as
+#' `NA` rather than refusing. The check runs in the constructor, where
+#' the caller chooses the type, and not in `validate_apabayes_tidy()`, so
+#' that a subset of a valid table stays valid; a zero-row table is
+#' exempt, as it is for every other type.
+#'
 #' @param x A data frame with at least the required columns of `type`.
 #' @param type Which column contract applies: one of `"parameters"`,
 #'   `"diagnostics"`, `"hypotheses"`, `"loo"`, `"bf_models"`,
@@ -366,6 +378,9 @@ apabayes_tidy <- function(x,
   }
 
   cols <- assemble_tidy_columns(x, contract, type, ci_method, ci_level)
+  if (type == "sem_fit") {
+    check_sem_fit_content(cols, nrow(x))
+  }
   out <- tibble::new_tibble(cols, nrow = nrow(x), class = "apabayes_tidy")
   attributes_to_set <- c(
     list(
@@ -386,6 +401,48 @@ apabayes_tidy <- function(x,
   # invisibly, and the constructor's value must be visible so that a bare
   # `apabayes_tidy(x)` reaches `print.apabayes_tidy()`.
   out
+}
+
+# The fit indices of the `"sem_fit"` contract: the columns that report a
+# model's fit. The rest of the contract either names the model or
+# qualifies one of these — `df` and `p` belong to `chisq`, the `_low` and
+# `_high` pairs to their index — so bounds without their index are no
+# index at all.
+sem_fit_indices <- function() {
+  c("chisq", "cfi", "tli", "rmsea", "srmr", "ppp", "brmsea", "bgammahat")
+}
+
+# Finding 7 of the acceptance test, ruled blocking by decision 250: the
+# `"sem_fit"` contract requires only a `model` column, which a LOO
+# comparison also has, so a model-comparison table was accepted as a
+# table of fit indices with every index NA — and `apa_inline()` then
+# reported `NA` into a manuscript instead of refusing.
+#
+# The check lives in the constructor, where the caller chooses the label,
+# and not in `validate_apabayes_tidy()`, which runs on every consumer
+# entry and on tables that `[` has subset: a one-row subset can be the
+# model that has no index of its own, and it stays a valid table. A
+# zero-row table makes no claim about any model and is left alone, as it
+# is for every other type.
+check_sem_fit_content <- function(cols, n, call = rlang::caller_env()) {
+  if (n == 0) {
+    return(invisible(cols))
+  }
+  indices <- sem_fit_indices()
+  has <- vapply(indices, function(nm) any(!is.na(cols[[nm]])), logical(1))
+  if (any(has)) {
+    return(invisible(cols))
+  }
+  cli::cli_abort(
+    c(
+      "A {.val sem_fit} table must carry at least one fit index.",
+      i = "Index columns: {.field {indices}}; every one of them is
+           missing or all {.code NA}.",
+      i = 'A table of model comparisons is {.code type = "loo"} or
+           {.code type = "bf_models"}.'
+    ),
+    call = call
+  )
 }
 
 # The constructor's remaining input checks, in the order it reported them

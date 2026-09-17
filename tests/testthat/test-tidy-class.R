@@ -231,8 +231,9 @@ test_that("every type constructs from its required columns", {
     data.frame(model = "m1", bf = 3.2),
     type = "bf_models"
   ))
+  # `"sem_fit"` needs `model` and one index; `model` alone is finding 7.
   expect_no_error(apabayes_tidy(
-    data.frame(model = "m1"),
+    data.frame(model = "m1", cfi = 0.98),
     type = "sem_fit"
   ))
   expect_no_error(apabayes_tidy(
@@ -373,4 +374,113 @@ test_that("the validator catches a table edited into an invalid state", {
   bad_level <- out
   bad_level$ci_level <- c(0.95, 1.4)
   expect_error(validate_apabayes_tidy(bad_level), "ci_level")
+})
+
+# ---- the sem_fit content check (finding 7) --------------------------------
+
+# The `"sem_fit"` contract needs only a `model` column, which a LOO
+# comparison also has, so a model-comparison table was accepted as a table
+# of fit indices with every index NA and reported `NA` inline. The
+# constructor therefore checks content for this one type
+# (spec-prerelease-fixes-0.1.0.md § B6).
+
+test_that("a sem_fit table with no fit index at all is refused", {
+  expect_error(
+    apabayes_tidy(
+      data.frame(model = c("a", "b", "c")),
+      type = "sem_fit", centrality = NA, ci_method = NA, ci_level = NA
+    ),
+    "at least one fit index"
+  )
+})
+
+test_that("a LOO comparison passed as sem_fit is refused", {
+  skip_if_not_installed("loo")
+  cmp <- as.data.frame(loo::loo_compare(test_loo_list()))
+  cmp$model <- rownames(cmp)
+  expect_error(
+    apabayes_tidy(cmp, type = "sem_fit", centrality = NA, ci_method = NA),
+    "at least one fit index"
+  )
+})
+
+test_that("one index is enough, and only an index counts", {
+  expect_no_error(apabayes_tidy(
+    data.frame(model = "m", cfi = 0.98),
+    type = "sem_fit"
+  ))
+  expect_no_error(apabayes_tidy(
+    data.frame(model = "m", chisq = 85.3, df = 24, p = 0.001),
+    type = "sem_fit"
+  ))
+  expect_no_error(apabayes_tidy(
+    data.frame(model = "m", ppp = 0.43),
+    type = "sem_fit"
+  ))
+  # Bounds without their index are not a fit index.
+  expect_error(
+    apabayes_tidy(
+      data.frame(model = "m", rmsea_low = 0.01, rmsea_high = 0.08),
+      type = "sem_fit"
+    ),
+    "at least one fit index"
+  )
+  # Neither is the degrees of freedom of a chi-square that is not there.
+  expect_error(
+    apabayes_tidy(data.frame(model = "m", df = 24), type = "sem_fit"),
+    "at least one fit index"
+  )
+})
+
+test_that("an index column of nothing but NA does not count", {
+  expect_error(
+    apabayes_tidy(
+      data.frame(model = c("a", "b"), cfi = NA_real_),
+      type = "sem_fit"
+    ),
+    "at least one fit index"
+  )
+  # One model without an index among models that have one is a table.
+  expect_no_error(apabayes_tidy(
+    data.frame(model = c("a", "b"), cfi = c(0.98, NA)),
+    type = "sem_fit"
+  ))
+})
+
+test_that("a zero-row sem_fit table claims nothing and is accepted", {
+  out <- apabayes_tidy(
+    data.frame(model = character(), cfi = numeric()),
+    type = "sem_fit"
+  )
+  expect_identical(nrow(out), 0L)
+  expect_true(is_apabayes_tidy(out))
+})
+
+test_that("the check is the constructor's, not the validator's", {
+  # A subset must stay valid: the validator runs on every consumer entry,
+  # and a one-row subset of a multi-model table can be the row with no
+  # index of its own.
+  t <- apabayes_tidy(
+    data.frame(model = c("a", "b"), cfi = c(0.98, NA)),
+    type = "sem_fit"
+  )
+  expect_no_error(validate_apabayes_tidy(t[2, ]))
+  expect_true(is_apabayes_tidy(t[2, ]))
+})
+
+test_that("no other type gains a content check", {
+  # `"loo"` and `"bf_models"` require a second column that cannot be
+  # produced by accident, so they refuse the same data frame by name.
+  expect_error(
+    apabayes_tidy(data.frame(model = "m"), type = "loo"),
+    "elpd_diff"
+  )
+  expect_error(
+    apabayes_tidy(data.frame(model = "m"), type = "bf_models"),
+    "bf"
+  )
+  expect_no_error(apabayes_tidy(
+    data.frame(term = "b_wt", estimate = NA_real_),
+    type = "parameters"
+  ))
 })
