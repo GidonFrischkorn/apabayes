@@ -564,8 +564,35 @@ test_that("fit_ci_level widens the interval and reaches the attribute", {
   narrow <- suppressWarnings(apa_tidy_sem_fit(two))
   wide <- suppressWarnings(apa_tidy_sem_fit(two, fit_ci_level = 0.95))
 
-  expect_lt(wide$brmsea_low, narrow$brmsea_low)
-  expect_gt(wide$brmsea_high, narrow$brmsea_high)
+  # What `fit_ci_level` promises is that the bounds ARE the HDI at the
+  # level asked for, so that is what is asserted: computed from the same
+  # indices, it holds however the chains came out. The fit samples at
+  # test time, and the old assertion was `expect_lt()` on two bounds that
+  # the draws can make equal — which is what happened on Windows in CI
+  # run 35209064098 (both BRMSEA lower bounds 0.08), a machine
+  # difference and not a defect. An HDI from a finite number of draws is
+  # not guaranteed to strictly widen on both sides, only to be no
+  # narrower, so the inequalities below are not strict.
+  fi <- suppressWarnings(blavaan::blavFitIndices(two))
+  hdi95 <- as.data.frame(bayestestR::describe_posterior(
+    as.data.frame(fi@indices),
+    centrality = "median", ci = 0.95, ci_method = "hdi", test = NULL
+  ))
+  expect_equal(
+    wide$brmsea_low, hdi95$CI_low[hdi95$Parameter == "BRMSEA"],
+    tolerance = 1e-6
+  )
+  expect_equal(
+    wide$brmsea_high, hdi95$CI_high[hdi95$Parameter == "BRMSEA"],
+    tolerance = 1e-6
+  )
+
+  expect_lte(wide$brmsea_low, narrow$brmsea_low)
+  expect_gte(wide$brmsea_high, narrow$brmsea_high)
+  expect_gte(
+    wide$brmsea_high - wide$brmsea_low,
+    narrow$brmsea_high - narrow$brmsea_low
+  )
   expect_equal(wide$brmsea, narrow$brmsea)
   expect_identical(attr(wide, "ci_level"), 0.95)
 })

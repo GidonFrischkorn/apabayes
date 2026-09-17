@@ -35,6 +35,12 @@
   hardcoded Homebrew path, and the blavaan cmdstan-target test guards
   its fit the same way.
 
+* internal: `apa_tidy_sem_fit(fit_ci_level =)` is tested by the property
+  it promises — that the bounds are the HDI at the level asked for,
+  computed from the same indices — rather than by a strict inequality
+  between two bounds that the draws can make equal, which is how it
+  failed on Windows.
+
 * feat: `apa_value()` reads one value out of a tidy table. It addresses a
   row exactly as `apa_inline()` does — by term, by label, by the two
   sides of a structural-equation path, by a correlation's pair in either
