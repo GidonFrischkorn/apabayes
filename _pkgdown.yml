@@ -1,0 +1,39 @@
+url: https://www.gfrischkorn.org/apabayes/
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Extract
+  desc: Turn a fitted model, posterior draws or a comparison into the tidy contract.
+  contents:
+  - apa_tidy
+  - apa_tidy_sem_fit
+  - apa_tidy_diagnostics
+  - apabayes_tidy
+  - is_apabayes_tidy
+  - validate_apabayes_tidy
+- title: Inline
+  desc: One estimate, addressed by name, as an APA string.
+  contents:
+  - apa_inline
+  - is_apa_results
+  - apabayes-papaja
+- title: Tables
+  desc: A tidy table formatted for apa7::apa_flextable(), and its note.
+  contents:
+  - apa_table
+  - apa_note
+- title: Number formatting
+  desc: The format layer every inline string and table cell is built from.
+  contents:
+  - apa_num
+  - apa_p
+  - apa_pd
+  - apa_prob
+  - apa_bf
+  - apa_bf_label
+  - apa_er
+  - apa_ci
+  - apa_rhat_ess
+  - apa_convergence

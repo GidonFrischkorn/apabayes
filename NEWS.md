@@ -1,4 +1,4 @@
-# apabayes 0.0.0.9000
+# apabayes 0.1.0
 
 * fix: `apa_tidy()` refuses a data frame or matrix too short to be a real
   posterior instead of reporting a confident but meaningless estimate.

@@ -4,7 +4,7 @@
 \name{apabayes-package}
 \alias{apabayes}
 \alias{apabayes-package}
-\title{apabayes: Report Bayesian and Structural Equation Models in APA Style for apaquarto}
+\title{apabayes: Report Bayesian and Structural Equation Models in APA Style for 'apaquarto'}
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
@@ -14,6 +14,7 @@ Inline strings and tables in American Psychological Association style, seventh e
 Useful links:
 \itemize{
   \item \url{https://github.com/GidonFrischkorn/apabayes}
+  \item \url{https://www.gfrischkorn.org/apabayes/}
   \item Report bugs at \url{https://github.com/GidonFrischkorn/apabayes/issues}
 }
 
