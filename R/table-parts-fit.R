@@ -60,7 +60,11 @@ level_prefix <- function(level) {
 sem_fit_headers <- function() {
   c(
     cfi = "CFI", tli = "TLI", rmsea = "RMSEA", srmr = "SRMR", ppp = "PPP",
-    brmsea = "BRMSEA", bgammahat = "B\u0393\u0302"
+    # The header is the ASCII spelling, not the symbol: the rendering
+    # font does not compose U+0302 over Greek capital Gamma, and prints
+    # a spacing glyph that swallows the following space (M5-6, measured
+    # M5h). apa_inline() keeps B\u0393\u0302, which composes in prose.
+    brmsea = "BRMSEA", bgammahat = "BGammaHat"
   )
 }
 

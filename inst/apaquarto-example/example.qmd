@@ -1,0 +1,106 @@
+---
+title: "Reporting a Bayesian model with apabayes"
+shorttitle: "apabayes example"
+author:
+  - name: A. N. Author
+    corresponding: true
+    email: author@example.edu
+    affiliations:
+      - name: Example University
+abstract: >
+  A minimal apaquarto document showing apabayes in both of its registers:
+  a number in a sentence and a table with its note.
+floatsintext: true
+# This document ships with no fitted models, so every number below comes
+# from a stored posterior summary. See the setup chunk.
+knitr:
+  opts_chunk:
+    # knitr's default svg device needs cairo or X11. png needs neither,
+    # and the typst format aborts every chunk without it.
+    dev: png
+format:
+  apaquarto-pdf:
+    documentmode: man
+  apaquarto-docx: default
+  apaquarto-html: default
+  apaquarto-typst: default
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(apabayes)
+library(apa7)
+
+# Both objects are stored summaries that ship with apabayes, so this
+# document renders without brms, blavaan, or a compiler. The chunk below
+# shows what these two lines are in a real manuscript.
+posterior <- readRDS(
+  system.file("extdata", "parameters.rds", package = "apabayes")
+)
+fit_indices <- readRDS(
+  system.file("extdata", "sem_fit.rds", package = "apabayes")
+)
+
+# apa_note() is read by the `apa-note` chunk option below, and a chunk
+# option is evaluated before its own chunk runs. So the table has to be
+# built *here*, in an earlier chunk, not inside the chunk that prints it.
+# This is the first thing that goes wrong when copying this file.
+posterior_table <- apa_table(posterior)
+fit_table <- apa_table(fit_indices)
+```
+
+In your own manuscript the setup chunk fits the model instead, and
+everything after it is unchanged:
+
+```{r}
+#| eval: false
+fit <- brms::brm(mpg ~ wt + am, data = mtcars)
+posterior <- apa_tidy(fit)
+```
+
+## Numbers in a sentence
+
+`apa_inline()` returns the APA string for one term, formatted for whatever
+this document is rendering to. Weight predicted fuel economy,
+`r apa_inline(posterior, "wt")`, while the transmission effect was
+indistinguishable from zero, `r apa_inline(posterior, "am")`.
+
+Nothing above names a format. `apa_inline()` asks knitr what is being
+rendered and spells its symbols accordingly: PDF gets LaTeX maths, because
+the PDF font drops a combining circumflex, and Word, HTML and Typst get
+Unicode.
+
+## Tables
+
+`apa_table()` takes the same object and returns a data frame that
+`apa7::apa_flextable()` renders. `apa_note()` builds the note that defines
+whatever the table's columns turned out to be.
+
+```{r}
+#| label: tbl-posterior
+#| tbl-cap: Posterior Summary for the Regression Model
+#| echo: false
+#| apa-note: !expr apa_note(posterior_table)
+apa7::apa_flextable(posterior_table)
+```
+
+The same two calls work on every object apabayes understands. @tbl-fit is a
+Bayesian structural equation model's fit indices rather than a regression's
+coefficients, and the code is unchanged.
+
+```{r}
+#| label: tbl-fit
+#| tbl-cap: Fit Indices
+#| echo: false
+#| apa-note: !expr apa_note(fit_table)
+apa7::apa_flextable(fit_table)
+```
+
+Model fit was acceptable, `r apa_inline(fit_indices)`.
+
+## What apabayes did not do
+
+Every number in this document came from easystats or from the model's own
+package. apabayes selected columns, arranged them and formatted them. It
+did not decide whether any of these values is good news.

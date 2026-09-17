@@ -1,0 +1,162 @@
+---
+title: "apabayes render fixture: every contract type"
+shorttitle: "render fixture"
+author:
+  - name: Fixture
+    corresponding: true
+    email: author@example.edu
+    affiliations:
+      - name: Nowhere
+abstract: >
+  Regression surface for test-render.R. Every contract type apa_tidy()
+  produces, as a table with its note and as an inline string. Not
+  documentation, and not shipped to users.
+floatsintext: true
+knitr:
+  opts_chunk:
+    dev: png
+format:
+  apaquarto-pdf:
+    documentmode: man
+  apaquarto-docx: default
+  apaquarto-html: default
+  apaquarto-typst: default
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(apabayes)
+library(apa7)
+
+# Read through system.file(), so this renders against whatever copy of
+# apabayes is installed. test-render.R installs the source under test into
+# a temporary library and points the render at it, which is the point of
+# the whole test: a render that passed against a stale installed copy
+# would be worth nothing.
+types <- c(
+  "parameters", "diagnostics", "hypotheses", "sem_fit", "loo",
+  "bf_inclusion", "bf_models", "contrasts", "correlations"
+)
+obj <- lapply(types, function(ty) {
+  readRDS(system.file("extdata", paste0(ty, ".rds"), package = "apabayes"))
+})
+names(obj) <- types
+
+# Built here, not in the printing chunks: a chunk option is evaluated
+# before its own chunk runs, so `apa-note: !expr apa_note(tab)` needs the
+# table to already exist.
+tab <- lapply(obj, apa_table)
+```
+
+# Inline strings
+
+MARKER-INLINE-PARAMETERS `r apa_inline(obj$parameters, "wt")`
+
+MARKER-INLINE-DIAGNOSTICS `r apa_inline(obj$diagnostics)$full_result[1]`
+
+MARKER-INLINE-HYPOTHESES `r apa_inline(obj$hypotheses)$full_result[1]`
+
+MARKER-INLINE-SEM_FIT `r apa_inline(obj$sem_fit)$full_result[1]`
+
+MARKER-INLINE-LOO `r apa_inline(obj$loo)$full_result[1]`
+
+MARKER-INLINE-BF_INCLUSION `r apa_inline(obj$bf_inclusion)$full_result[1]`
+
+MARKER-INLINE-BF_MODELS `r apa_inline(obj$bf_models)$full_result[1]`
+
+MARKER-INLINE-CONTRASTS `r apa_inline(obj$contrasts)$full_result[1]`
+
+MARKER-INLINE-CORRELATIONS `r apa_inline(obj$correlations)$full_result[1]`
+
+# Tables
+
+MARKER-TABLE-PARAMETERS
+
+```{r}
+#| label: tbl-parameters
+#| tbl-cap: Parameters
+#| echo: false
+#| apa-note: !expr apa_note(tab$parameters)
+apa7::apa_flextable(tab$parameters)
+```
+
+MARKER-TABLE-DIAGNOSTICS
+
+```{r}
+#| label: tbl-diagnostics
+#| tbl-cap: Diagnostics
+#| echo: false
+#| apa-note: !expr apa_note(tab$diagnostics)
+apa7::apa_flextable(tab$diagnostics)
+```
+
+MARKER-TABLE-HYPOTHESES
+
+```{r}
+#| label: tbl-hypotheses
+#| tbl-cap: Hypotheses
+#| echo: false
+#| apa-note: !expr apa_note(tab$hypotheses)
+apa7::apa_flextable(tab$hypotheses)
+```
+
+MARKER-TABLE-SEM_FIT
+
+```{r}
+#| label: tbl-sem-fit
+#| tbl-cap: Fit Indices
+#| echo: false
+#| apa-note: !expr apa_note(tab$sem_fit)
+apa7::apa_flextable(tab$sem_fit)
+```
+
+MARKER-TABLE-LOO
+
+```{r}
+#| label: tbl-loo
+#| tbl-cap: Model Comparison
+#| echo: false
+#| apa-note: !expr apa_note(tab$loo)
+apa7::apa_flextable(tab$loo)
+```
+
+MARKER-TABLE-BF_INCLUSION
+
+```{r}
+#| label: tbl-bf-inclusion
+#| tbl-cap: Inclusion Bayes Factors
+#| echo: false
+#| apa-note: !expr apa_note(tab$bf_inclusion)
+apa7::apa_flextable(tab$bf_inclusion)
+```
+
+MARKER-TABLE-BF_MODELS
+
+```{r}
+#| label: tbl-bf-models
+#| tbl-cap: Bayes Factor Comparison
+#| echo: false
+#| apa-note: !expr apa_note(tab$bf_models)
+apa7::apa_flextable(tab$bf_models)
+```
+
+MARKER-TABLE-CONTRASTS
+
+```{r}
+#| label: tbl-contrasts
+#| tbl-cap: Contrasts
+#| echo: false
+#| apa-note: !expr apa_note(tab$contrasts)
+apa7::apa_flextable(tab$contrasts)
+```
+
+MARKER-TABLE-CORRELATIONS
+
+```{r}
+#| label: tbl-correlations
+#| tbl-cap: Correlations
+#| echo: false
+#| apa-note: !expr apa_note(tab$correlations)
+apa7::apa_flextable(tab$correlations)
+```

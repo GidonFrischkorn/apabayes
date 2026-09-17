@@ -2084,7 +2084,7 @@ test_that("a blavaan sem_fit table shows the Bayesian indices", {
   tab <- apa_table(b)
   expect_identical(
     names(tab),
-    c("Model", "PPP", "BRMSEA \u2060[90% HDI]", "BΓ̂ \u2060[90% HDI]")
+    c("Model", "PPP", "BRMSEA \u2060[90% HDI]", "BGammaHat \u2060[90% HDI]")
   )
   expect_identical(tab[["Model"]], row$model)
   expect_identical(tab[["PPP"]], index_cell(row$ppp))
@@ -2093,7 +2093,7 @@ test_that("a blavaan sem_fit table shows the Bayesian indices", {
     index_interval_cell(row$brmsea, row$brmsea_low, row$brmsea_high)
   )
   expect_identical(
-    tab[["BΓ̂ \u2060[90% HDI]"]],
+    tab[["BGammaHat \u2060[90% HDI]"]],
     index_interval_cell(row$bgammahat, row$bgammahat_low, row$bgammahat_high)
   )
   assert_table_contract(tab)
@@ -2106,7 +2106,7 @@ test_that("a stacked table shows both index families with empty cells", {
     names(tab),
     c(
       "Model", "*χ*^2^", "*df*", "*p*", "CFI", "TLI", "RMSEA \u2060[90% CI]",
-      "SRMR", "PPP", "BRMSEA \u2060[90% HDI]", "BΓ̂ \u2060[90% HDI]"
+      "SRMR", "PPP", "BRMSEA \u2060[90% HDI]", "BGammaHat \u2060[90% HDI]"
     )
   )
   expect_identical(tab[["Model"]], c("One factor", "Two factors"))
@@ -2240,7 +2240,7 @@ test_that("the blavaan sem_fit note defines the Bayesian indices", {
     paste0(
       "PPP = posterior predictive *p*-value; BRMSEA = Bayesian root mean ",
       "square error of approximation, with its 90% highest density interval; ",
-      "BΓ̂ = Bayesian gamma-hat, with its 90% highest density interval."
+      "BGammaHat = Bayesian gamma-hat, with its 90% highest density interval."
     )
   )
 })
@@ -2587,4 +2587,95 @@ test_that("apa_inline and the note keep plain brackets", {
   expect_true(grepl("[", s, fixed = TRUE))
   note <- apa_note(apa_table(apa_tidy(fixture("mb_contrasts")), stats = "rope"))
   expect_false(grepl(wj, note, fixed = TRUE))
+})
+
+# Milestone 5, D5. A combining mark only composes over a base character
+# the rendering font knows how to compose it over. Measured in session 32
+# (spec-milestone5.md M5h) by rendering and *looking at* the page: in an
+# apa7 table cell the font composes U+0302 over Latin R and over Latin G,
+# and does not compose it over Greek capital Gamma, where it falls back to
+# a spacing glyph that swallows the following space. `pdftotext` reports
+# the correct characters either way (M5i), so no render assertion can see
+# this; the constraint is enforced here instead, before anything renders.
+#
+# To widen composable_bases, render the candidate in a table cell, look at
+# the page, and add it with the measurement recorded. Do not widen it on
+# the strength of extracted text.
+composable_bases <- "R"
+
+combining_marks_on <- function(strings) {
+  out <- character()
+  for (s in strings) {
+    chars <- strsplit(s, "")[[1]]
+    if (length(chars) < 2) next
+    codes <- utf8ToInt(s)
+    for (i in seq_along(codes)) {
+      if (codes[i] >= 0x0300 && codes[i] <= 0x036F) {
+        base <- if (i > 1) chars[i - 1] else ""
+        out <- c(out, paste0(base, chars[i]))
+      }
+    }
+  }
+  unique(out)
+}
+
+test_that("the helper finds a combining mark and its base", {
+  expect_identical(combining_marks_on("R̂"), "R̂")
+  expect_identical(combining_marks_on("BΓ̂"), "Γ̂")
+  expect_identical(combining_marks_on(c("CFI", "TLI")), character())
+})
+
+test_that("every table header puts its combining marks on a composable base", {
+  # Built here rather than in a helper function: `fixture()` comes from
+  # setup.R, which lintr cannot see from inside a function body.
+  objs <- list(
+    parameters = fixture("tidy_brms_full"),
+    diagnostics = fixture("diag_brms_full"),
+    hypotheses = fixture("tidy_hypotheses"),
+    sem_fit = fixture("sem_fit_blavaan"),
+    loo = apa_tidy(fixture("compare_loo_matrix")),
+    bf_inclusion = apa_tidy(fixture("inc_anova")),
+    bf_models = apa_tidy(fixture("bf_anova")),
+    contrasts = apa_tidy(fixture("mb_contrasts")),
+    correlations = apa_tidy(fixture("cor_default"))
+  )
+  for (type in names(objs)) {
+    x <- objs[[type]]
+    headers <- names(apa_table(x))
+    wide <- try(
+      names(apa_table(x, stats = apabayes:::table_stats_vocabulary(type))),
+      silent = TRUE
+    )
+    if (!inherits(wide, "try-error")) {
+      headers <- unique(c(headers, wide))
+    }
+    found <- combining_marks_on(headers)
+    bases <- substr(found, 1, 1)
+    expect_true(
+      all(bases %in% strsplit(composable_bases, "")[[1]]),
+      label = paste0(
+        type, " headers put a combining mark on an uncomposable base: ",
+        paste(found[!bases %in% strsplit(composable_bases, "")[[1]]],
+          collapse = ", "
+        )
+      )
+    )
+  }
+})
+
+test_that("the sem_fit gamma-hat header is ASCII, and the note follows it", {
+  tab <- apa_table(fixture("sem_fit_blavaan"))
+  expect_true(any(grepl("BGammaHat", names(tab), fixed = TRUE)))
+  expect_false(any(grepl("Γ̂", names(tab))))
+  # The note glosses the header, so it has to name the same symbol.
+  expect_match(apa_note(tab), "BGammaHat = Bayesian gamma-hat", fixed = TRUE)
+})
+
+test_that("apa_inline keeps the Greek gamma-hat, which composes in prose", {
+  # D6 changes the table header only: running text reaches the `latex`
+  # target under PDF, where B$\hat{\Gamma}$ composes correctly (M5h).
+  expect_identical(apabayes:::symbol("bgammahat", "md"), "BΓ̂")
+  expect_identical(
+    apabayes:::symbol("bgammahat", "latex"), "B$\\hat{\\Gamma}$"
+  )
 })

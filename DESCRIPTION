@@ -43,12 +43,15 @@ Suggests:
     modelbased,
     papaja,
     posterior,
+    rmarkdown,
     rstan,
     rstanarm,
     runjags,
     testthat (>= 3.0.0),
+    tidyr,
     withr
 Config/testthat/edition: 3
+VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-GB
 Roxygen: list(markdown = TRUE)

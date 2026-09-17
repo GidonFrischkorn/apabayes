@@ -1,0 +1,231 @@
+---
+title: "Reporting brms models in apaquarto"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reporting brms models in apaquarto}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(apabayes)
+```
+
+apabayes turns a fitted Bayesian model into the two things an APA
+manuscript needs from it: a number in a sentence, and a table with a note
+that says what its columns mean. It does not fit anything, and it does not
+compute anything — every value comes from the easystats packages or from
+the model's own package. apabayes selects, arranges and formats.
+
+This vignette reports a stored posterior summary rather than fitting a
+model, so that it builds in a second and without a compiler. Everything
+shown works identically on a live fit.
+
+## One object in the middle
+
+`apa_tidy()` is the only function that knows about model classes. It takes
+a `brmsfit`, a `lavaan` or `blavaan` fit, a `brms` hypothesis test, a
+`loo` comparison, a Bayes factor object, posterior contrasts, a Bayesian
+correlation — thirteen routes in all — and returns one shape:
+
+```{r}
+#| eval: false
+fit <- brms::brm(mpg ~ wt + am, data = mtcars)
+posterior <- apa_tidy(fit)
+```
+
+```{r}
+posterior <- readRDS(
+  system.file("extdata", "parameters.rds", package = "apabayes")
+)
+posterior
+```
+
+The class is `apabayes_tidy`, a tibble with the interval method, interval
+level and centrality recorded as attributes, so nothing downstream has to
+guess whether a bound is a credible interval or a highest-density one.
+
+Everything after this point takes that object, not the model. That is the
+whole architecture: one extract layer per model class, and a single
+reporting layer that never sees a fit.
+
+## A number in a sentence
+
+`apa_inline()` addresses one term by name and returns the APA string:
+
+```{r}
+apa_inline(posterior, "wt")
+```
+
+In a Quarto or R Markdown document you write that inline, and the string
+lands in the prose:
+
+```
+Weight predicted fuel economy, `r knitr::inline_expr('apa_inline(posterior, "wt")')`.
+```
+
+The object it returns follows papaja's `apa_results` shape, so
+`$estimate`, `$statistic` and `$full_result` are all there if you want a
+part rather than the whole.
+
+## A table and its note
+
+`apa_table()` returns a data frame whose columns are already formatted and
+whose headers are already APA. `apa_note()` builds the note that defines
+them — and it defines whatever the table actually has, not a fixed list:
+
+```{r}
+tab <- apa_table(posterior)
+names(tab)
+apa_note(tab)
+```
+
+In an apaquarto document the table is printed by apa7, and the note goes
+in the chunk option:
+
+````
+```{r}
+#| label: tbl-posterior
+#| tbl-cap: Posterior Summary
+#| apa-note: !expr apa_note(tab)
+apa7::apa_flextable(tab)
+```
+````
+
+One thing to know before you copy that: a chunk option is evaluated
+*before* its own chunk runs, so `tab` has to be built in an earlier chunk.
+Building it inside the chunk that prints it will fail.
+
+The same two calls work on all nine kinds of table apabayes produces.
+Model comparison, for instance:
+
+```{r}
+comparison <- readRDS(
+  system.file("extdata", "loo.rds", package = "apabayes")
+)
+apa_table(comparison)
+```
+
+## Beyond one row per parameter
+
+`apa_table()` targets a model-parameter table: one row per parameter, one
+column per statistic. A table shaped by a design factor — one row per
+condition, one column per measurement occasion — is not something it
+produces on its own, because the tidy contract underneath it is one row
+per parameter and nothing in `apa_table()` pivots that. Reshape its
+output instead.
+
+`group_rows = TRUE` adds a `Component` column, normally used for random
+effects; naming your own design factor in `component` repurposes it as
+the column `pivot_wider()` spreads on. Two waves of the same two
+parameters, illustrated with made-up numbers:
+
+```{r}
+by_wave <- apabayes_tidy(
+  data.frame(
+    term = c("drift", "drift", "boundary", "boundary"),
+    label = c(
+      "Drift rate", "Drift rate",
+      "Boundary separation", "Boundary separation"
+    ),
+    component = c("Wave 1", "Wave 2", "Wave 1", "Wave 2"),
+    effects = "fixed",
+    estimate = c(0.42, 0.51, 1.18, 1.24),
+    ci_low = c(0.31, 0.39, 0.98, 1.05),
+    ci_high = c(0.53, 0.63, 1.38, 1.43),
+    pd = c(1, 1, 1, 1)
+  ),
+  type = "parameters", centrality = "median",
+  ci_method = "eti", ci_level = 0.95
+)
+wide <- apa_table(by_wave, stats = character(), group_rows = TRUE) |>
+  tidyr::pivot_wider(
+    id_cols = Predictor, names_from = Component,
+    values_from = 3
+  )
+wide
+```
+
+```{r}
+#| eval: false
+apa7::apa_flextable(wide)
+```
+
+`apabayes_tidy()` is the public constructor behind this: it takes a plain
+data frame with the contract's column names, so a design table built from
+a stored summary — not only from a fresh `apa_tidy()` call — starts from
+the same place.
+
+## Four output formats
+
+An APA symbol is not one string. A combining circumflex over an R composes
+in Word, HTML and Typst, and the PDF font drops it; LaTeX maths sets it
+correctly in PDF and is meaningless everywhere else. So apabayes asks
+knitr what is being rendered and spells its symbols to suit:
+
+| apaquarto format | what apabayes emits |
+| --- | --- |
+| `apaquarto-pdf` | LaTeX maths — `$\hat{R}$`, `$\chi^2$` |
+| `apaquarto-docx` | Unicode and pandoc markdown |
+| `apaquarto-html` | Unicode and pandoc markdown |
+| `apaquarto-typst` | Unicode and pandoc markdown |
+
+You do not have to do anything for this; it is what `apa_inline()` does
+when you do not pass `markup`. Pass `markup = "plain"` to get an
+unformatted string for a console or a test.
+
+`apaquarto-typst` needs **apaquarto 6.0.0 or newer**, where it compiles
+for the first time.
+
+## A document to start from
+
+A complete, minimal apaquarto manuscript ships with the package:
+
+```{r}
+#| eval: false
+system.file("apaquarto-example", package = "apabayes")
+```
+
+It holds `example.qmd` and a README with the two commands that render it.
+Copy the directory somewhere of your own, run `quarto add wjschne/apaquarto`
+beside it, and render.
+
+## What apa_inline() does not do yet
+
+A real manuscript's prose does more with one estimate than apabayes
+currently reaches in one call. Measured against a real manuscript
+conversion rather than invented, and scoped for a future release rather
+than silently absent:
+
+- **A bare-bracket interval** (`.57 [.46, .67]`, no `CrI`/`HDI` label).
+  `ci_label = NULL` drops the label but keeps the comma before the
+  interval (`.57, [.46, .67]`). Build the string from `$estimate` and
+  `$full_result` by hand until this lands.
+- **A single statistic without the estimate** — quoting only a Bayes
+  factor or a *pd* where the sentence has already named the quantity.
+  `apa_inline()` always includes the estimate; read the column
+  (`t$bf10`, `t$pd`) and format it with `apa_bf()` or `apa_pd()`
+  directly.
+- **A signed or reference-flipped LOO difference.** `apa_inline()` on a
+  `loo` table always signs ΔELPD from the best model; a sentence that
+  states how far a *different* model trails, unsigned, has no
+  `reference =` or `abs` argument yet. Read `$elpd_diff` and `$se` and
+  compose the sentence directly.
+- **`apabayes_tidy(type = "sem_fit")` does not check that its columns
+  hold fit indices.** A table that merely has a `model` column — a
+  `loo` comparison, say — is accepted, and reports every index as
+  empty rather than refusing. Pass only tables you built for this
+  contract.
+- **No route reads a named numeric vector** — the natural shape of
+  `blavaan::blavFitIndices()` saved on its own. Build a one-row data
+  frame with the contract's column names (`ppp`, `brmsea`,
+  `bgammahat`, ...) and pass it to `apabayes_tidy()` instead.
+
+## What apabayes will not do
+
+Nothing apabayes prints judges a model. There is no rule that turns a
+Bayes factor into "strong evidence" unless you ask for one, no threshold
+on R-hat that produces a verdict, and no fit index that comes with a pass
+or a fail. Those are the author's to write, and the author's to defend.

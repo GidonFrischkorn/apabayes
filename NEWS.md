@@ -1,5 +1,35 @@
 # apabayes 0.0.0.9000
 
+* feat: apabayes ships an apaquarto example and a vignette, and the test
+  suite gained a gate that renders a document. `inst/apaquarto-example/`
+  holds a minimal apaquarto manuscript with a README naming the two
+  commands that render it, and the vignette "Reporting brms models in
+  apaquarto" walks through `apa_tidy()`, `apa_inline()`, `apa_table()` and
+  `apa_note()`. Both build from stored posterior summaries in
+  `inst/extdata`, so neither needs a compiler or a fit. `test-render.R`
+  renders every contract type to all four apaquarto formats and reads the
+  output back; it is opt-in behind `APABAYES_RENDER_TEST` and skips, with
+  its reason, wherever the toolchain is absent. The reason it exists: the
+  word-joiner defect below was in committed code at 100 % coverage with
+  `R CMD check` clean, because nothing this project ran rendered a
+  document.
+
+* feat: Typst joins the promised formats. `apaquarto-typst` compiles from
+  apaquarto 6.0.0, where it previously did not compile at all, so all four
+  apaquarto formats are now rendered and read by the render test. On
+  apaquarto 5.x Typst still fails, for reasons that are apaquarto's and
+  not apabayes's.
+
+* fix: the `sem_fit` table header for Bayesian gamma-hat is `BGammaHat`,
+  not `BΓ̂`. The rendering font does not compose a combining circumflex
+  over Greek capital Gamma in a table cell: it substitutes a spacing glyph
+  that swallows the following space, in both PDF engines, so the header
+  printed as `BΓˆ[90% HDI]`. The characters were correct, which is why
+  reading the extracted text did not show it. `apa_inline()` is unchanged
+  and still says `BΓ̂`, which composes correctly in running text. The
+  table note follows the header, so it now reads `BGammaHat = Bayesian
+  gamma-hat`.
+
 * fix: every bracket a table prints opens with a word joiner (U+2060), so
   an apaquarto PDF renders its intervals. apa7 writes each run of a cell
   as `\fontspec{Times New Roman} <text>`, and fontspec reads
