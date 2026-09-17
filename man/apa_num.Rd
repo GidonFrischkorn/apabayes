@@ -35,8 +35,12 @@ minus sign of the markup target. Every other formatter in apabayes
 builds on this one.
 }
 \details{
-Rounding is C \code{printf} rounding through \code{\link[=formatC]{formatC()}}, the same as
-\code{papaja::apa_num()}. A result that would read \code{-0.00} is printed
+Rounding is apabayes's own, so that the same value prints the same
+string on every platform: the number is rounded as it is written, with
+ties going away from zero (\code{0.005} prints \code{0.01}, \code{2.675} prints
+\code{2.68}), and \code{\link[=formatC]{formatC()}} only lays the rounded number out. Leaving the
+rounding to the C library made the result differ between Windows and
+the other platforms. A result that would read \code{-0.00} is printed
 \code{0.00}.
 }
 \section{papaja}{

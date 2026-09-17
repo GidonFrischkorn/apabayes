@@ -1,5 +1,22 @@
 # apabayes 0.1.0
 
+* fix: every formatter rounds by apabayes's own rule instead of the C
+  library's, so the same value prints the same string on every platform.
+  The number is rounded as it is written, with ties going away from zero
+  (`apa_num(0.005)` is `0.01`, `apa_num(2.675)` is `2.68`), and
+  `formatC()` only lays the rounded number out. Measured: the first CI
+  run printed `.00` on Windows where macOS and Linux printed `.01`,
+  because Windows rounds the 15-significant-digit decimal with ties to
+  even while the others round the stored double. Values whose double
+  sits just below the written midpoint now round up on macOS and Linux
+  as well (`0.145` prints `0.15`, was `0.14`), and an exact binary tie
+  goes away from zero rather than to even (`0.125` prints `0.13`, was
+  `0.12`). A value that rounds to zero still prints without a sign
+  (`.00`, never `-.00`), unchanged on every platform and now asserted
+  directly rather than through a seed helper that keeps the sign. The
+  regime boundaries of `apa_bf()` and `apa_er()` use the same rounding,
+  so a value is put in the regime it is printed in.
+
 * fix: the `modelbased` examples and tests guard on `marginaleffects` as
   well, and `marginaleffects (>= 0.29.0)` joins `Suggests`.
   `estimate_contrasts()` does its work through marginaleffects, which is

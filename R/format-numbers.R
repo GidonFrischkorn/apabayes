@@ -73,14 +73,50 @@ check_nonneg <- function(x, what, arg = rlang::caller_arg(x),
   invisible(x)
 }
 
-# The number a value becomes after printf rounding to `digits` decimals;
-# regime boundaries compare this, not the raw value. Infinite values
-# stay infinite.
-as_printed <- function(x, digits) {
+# ---- rounding ---------------------------------------------------------
+
+# Rounding is apabayes's own, not the C library's
+# (local/specs/spec-rounding-0.1.0.md). Leaving it to `formatC()` made
+# the printed string depend on the platform: measured on CI run
+# 35209064098, `formatC(0.005, digits = 2, format = "f")` is "0.01" on
+# macOS and Linux, which round the stored double correctly, and "0.00" on
+# Windows, which rounds the 15-significant-digit decimal with ties to
+# even.
+#
+# The rule is the one a psychologist means by "round half up": the
+# number *as written* rounds, ties away from zero. `0.005` goes to `.01`,
+# `2.675` to `2.68`, `0.145` to `.15`.
+#
+# The comparison is made in the original scale, against the decimal
+# midpoint, and not as `a * scale - lo >= 0.5`: the product carries its
+# own rounding error (`0.145 * 100` is `14.499999999999998`), while
+# `(lo + 0.5) / scale` is the nearest double to the midpoint, so the
+# comparison asks about the number that was written down. `floor()`, the
+# division and the comparison are IEEE operations, so the answer is the
+# same everywhere; and `(lo + up) / scale` is the nearest double to a
+# `digits`-decimal number, which leaves no tie for `formatC()` to settle.
+#
+# Beyond `2^53 / scale` a double has no representable fraction at this
+# scale and rounding is the identity. `sign(x) * 0` can give `-0`, which
+# `format_num()` zaps as it always has.
+round_half_up <- function(x, digits) {
   out <- x
-  finite <- is.finite(x)
-  out[finite] <- as.numeric(formatC(x[finite], digits = digits, format = "f"))
+  ok <- is.finite(x) & abs(x) * 10^digits < 2^53
+  if (any(ok)) {
+    scale <- 10^digits
+    a <- abs(x[ok])
+    lo <- floor(a * scale)
+    up <- a >= (lo + 0.5) / scale
+    out[ok] <- sign(x[ok]) * (lo + up) / scale
+  }
   out
+}
+
+# The number a value becomes when printed to `digits` decimals; regime
+# boundaries compare this, not the raw value, so that a value is put in
+# the regime it is printed in. Infinite values stay infinite.
+as_printed <- function(x, digits) {
+  round_half_up(x, digits)
 }
 
 # ---- apa_num ----------------------------------------------------------
@@ -106,8 +142,12 @@ as_printed <- function(x, digits) {
 #'   `"plain"`) and the infinity symbol.
 #'
 #' @details
-#' Rounding is C `printf` rounding through [formatC()], the same as
-#' `papaja::apa_num()`. A result that would read `-0.00` is printed
+#' Rounding is apabayes's own, so that the same value prints the same
+#' string on every platform: the number is rounded as it is written, with
+#' ties going away from zero (`0.005` prints `0.01`, `2.675` prints
+#' `2.68`), and [formatC()] only lays the rounded number out. Leaving the
+#' rounding to the C library made the result differ between Windows and
+#' the other platforms. A result that would read `-0.00` is printed
 #' `0.00`.
 #'
 #' @section papaja:
@@ -141,7 +181,7 @@ format_num <- function(x, digits, leading_zero, big_mark, target) {
   out <- rep(NA_character_, length(x))
   finite <- is.finite(x)
   if (any(finite)) {
-    s <- formatC(x[finite],
+    s <- formatC(round_half_up(x[finite], digits),
       digits = digits, format = "f",
       big.mark = if (big_mark) "," else ""
     )
@@ -270,11 +310,18 @@ format_bounded <- function(x, digits, percent = FALSE) {
   eps <- 10^-digits
   if (percent) {
     scale <- 100
-    fmt <- function(v) paste0(formatC(v, digits = digits, format = "f"), "%")
+    fmt <- function(v) {
+      paste0(
+        formatC(round_half_up(v, digits), digits = digits, format = "f"), "%"
+      )
+    }
   } else {
     scale <- 1
     fmt <- function(v) {
-      sub("^0\\.", ".", formatC(v, digits = digits, format = "f"))
+      sub(
+        "^0\\.", ".",
+        formatC(round_half_up(v, digits), digits = digits, format = "f")
+      )
     }
   }
   v <- x[ok] * scale
@@ -487,7 +534,7 @@ format_sci <- function(p, digits, target) {
   }
   e <- floor(log10(p))
   m <- p / 10^e
-  carry <- as.numeric(formatC(m, digits = digits, format = "f")) >= 10
+  carry <- round_half_up(m, digits) >= 10
   e[carry] <- e[carry] + 1
   m[carry] <- m[carry] / 10
   mantissa <- format_num(m, digits, TRUE, FALSE, target)
