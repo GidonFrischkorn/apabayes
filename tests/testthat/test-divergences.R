@@ -139,7 +139,7 @@ test_that("a blavaan fit on the cmdstan target is counted too", {
   skip_if_not_installed("cmdstanr")
   fit <- NULL
   invisible(utils::capture.output(
-    fit <- skip_if_no_fit(
+    fit <- skip_if_cannot_build(
       "blavaan (cmdstan target)", "one",
       withr::with_package("blavaan", suppressWarnings(suppressMessages(
         do.call("bcfa", list(

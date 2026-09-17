@@ -15,27 +15,35 @@ fixture <- function(name) {
 
 .apabayes_fit_cache <- new.env(parent = emptyenv())
 
-# A machine that cannot build a model reports these tests as *not run*,
-# never as failing: apabayes fits nothing, so a failure inside brm(),
-# bmm() or bcfa() says something about the environment and nothing about
-# the package. Measured on the first CI run (2026-09-17, run
-# 35209064098): `setup-r-dependencies` installs rstan and brms as
-# binaries without BH, so every live fit died with "Boost not found" and
-# 74 tests failed on all three platforms, where the same tree has 0
-# failures locally. `skip_on_cran()` and `skip_if_not_installed()` do not
-# see a missing C++ toolchain — an installed package is not a working
-# compiler — so the guard has to be the fit itself.
+# A machine that cannot build the object a test needs reports that test
+# as *not run*, never as failing: apabayes fits nothing and computes
+# nothing, so a failure inside brm(), bcfa() or estimate_contrasts() says
+# something about the environment and nothing about the package.
+#
+# Measured on the first CI run (2026-09-17, run 35209064098):
+# `setup-r-dependencies` installs rstan and brms as binaries without BH,
+# so every live fit died with "Boost not found" and 74 tests failed on
+# all three platforms, where the same tree has 0 failures locally.
+# Measured again on the second (run 35222574611): with marginaleffects
+# installed, `modelbased::estimate_contrasts()` got one step further and
+# demanded `collapse`.
+#
+# Naming the missing package in a `skip_if_not_installed()` does not end
+# this, and the second run is the proof: marginaleffects reaches for any
+# of 32 packages through `insight::check_if_installed()` (counted over
+# its namespace), so the guard has to be the call itself. An installed
+# package is not a working compiler and not a working dependency tree.
 #
 # `expr` is forced inside the handler, and the skip names the condition
-# so that a fit that broke for some *other* reason is still legible in
+# so that a call that broke for some *other* reason is still legible in
 # the log rather than silently absent.
-skip_if_no_fit <- function(pkg, name, expr) {
+skip_if_cannot_build <- function(pkg, name, expr) {
   tryCatch(
     expr,
     error = function(cnd) {
       testthat::skip(paste0(
-        pkg, " could not fit the \"", name, "\" model in this ",
-        "environment: ", conditionMessage(cnd)
+        pkg, " could not build \"", name, "\" in this environment: ",
+        conditionMessage(cnd)
       ))
     }
   )
@@ -95,7 +103,7 @@ test_brms_fit <- function(name = c("full", "reduced", "mixed", "multinomial")) {
       args$sample_prior <- "yes"
     }
   }
-  fit <- skip_if_no_fit(
+  fit <- skip_if_cannot_build(
     "brms", name,
     suppressMessages(suppressWarnings(do.call(brms::brm, args)))
   )
@@ -144,7 +152,7 @@ test_bmm_fit <- function(name = c("m3", "sdm")) {
     args,
     list(chains = 2, iter = 1000, seed = 1, refresh = 0, silent = 2)
   )
-  fit <- skip_if_no_fit(
+  fit <- skip_if_cannot_build(
     "bmm", name,
     suppressMessages(suppressWarnings(do.call(bmm::bmm, args)))
   )
@@ -440,7 +448,7 @@ test_blavaan_fit <- function(name = "one") {
   # closure it cannot coerce. The package is attached for the duration,
   # so the name resolves.
   invisible(utils::capture.output(
-    fit <- skip_if_no_fit(
+    fit <- skip_if_cannot_build(
       "blavaan", name,
       withr::with_package("blavaan", suppressWarnings(suppressMessages(
         do.call("bcfa", args)

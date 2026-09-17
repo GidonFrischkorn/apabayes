@@ -309,14 +309,19 @@ test_that("a slopes table is refused by the default method", {
 test_that("an unstripped table of a live stanreg fit reads the same way", {
   skip_if_not_installed("modelbased")
   # `estimate_contrasts()` does its work through marginaleffects, which is
-  # a Suggests of modelbased rather than a dependency: an installed
-  # modelbased is not enough (measured on CI, 2026-09-17).
+  # a Suggests of modelbased rather than a dependency, and
+  # marginaleffects in turn reaches for one of 32 further packages —
+  # `collapse` on this path. Both were measured on CI, one run apart, so
+  # the guard is the call and not a list of names.
   skip_if_not_installed("marginaleffects", "0.29.0")
   skip_if_no_bayestestr()
   fit <- test_stanreg_fit("factor")
-  x <- modelbased::estimate_contrasts(
-    fit,
-    contrast = "cyl_f", keep_iterations = TRUE
+  x <- skip_if_cannot_build(
+    "modelbased", "a contrasts table",
+    modelbased::estimate_contrasts(
+      fit,
+      contrast = "cyl_f", keep_iterations = TRUE
+    )
   )
   out <- apa_tidy(x)
   expect_identical(out$contrast[3], "8 - 6")

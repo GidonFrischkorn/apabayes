@@ -243,7 +243,7 @@ test_that("the runjags method reads $mcmc", {
     jagspath = unname(jags),
     silent.jags = TRUE, silent.runjags = TRUE
   )
-  rj <- skip_if_no_fit("runjags", "normal mean", suppressWarnings(
+  rj <- skip_if_cannot_build("runjags", "normal mean", suppressWarnings(
     runjags::run.jags(
       "model {
          for (i in 1:N) { y[i] ~ dnorm(mu, tau) }

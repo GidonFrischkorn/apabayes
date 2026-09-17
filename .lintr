@@ -4,6 +4,6 @@ linters: linters_with_defaults()
 # tag, so the condition cannot be wrapped, and appending `# nolint`
 # makes roxygen report "mismatched braces or quotes" and drop the
 # example block from the Rd (measured, session 37). The condition names
-# the three packages that example needs — modelbased, rstanarm and
-# marginaleffects — and is 82 characters.
+# the four packages that example needs — modelbased, rstanarm,
+# marginaleffects and collapse.
 exclusions: list("R/extract-draws.R" = list(line_length_linter = 74))

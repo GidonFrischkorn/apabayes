@@ -17,12 +17,14 @@
   regime boundaries of `apa_bf()` and `apa_er()` use the same rounding,
   so a value is put in the regime it is printed in.
 
-* fix: the `modelbased` examples and tests guard on `marginaleffects` as
-  well, and `marginaleffects (>= 0.29.0)` joins `Suggests`.
+* fix: the `modelbased` example guards on `marginaleffects` and
+  `collapse` as well, the live test guards on the call itself, and
+  `marginaleffects (>= 0.29.0)` joins `Suggests`.
   `estimate_contrasts()` does its work through marginaleffects, which is
-  a Suggests of modelbased rather than a dependency, so an installed
-  modelbased was not enough: on a machine without marginaleffects the
-  example run of `R CMD check` ERRORed.
+  a Suggests of modelbased rather than a dependency, and marginaleffects
+  does this path's through collapse, so an installed modelbased was not
+  enough: on a machine without either, the example run of `R CMD check`
+  ERRORed.
 
 * internal: a machine that cannot build a model now reports the live-fit
   tests as *not run* rather than as failing. `test_brms_fit()`,
