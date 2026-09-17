@@ -133,17 +133,23 @@ test_that("a blavaan fit on the cmdstan target is counted too", {
   # CmdStanMCMC, not a stanfit, and get_sampler_params() aborts on it.
   skip_on_cran()
   skip_if_not_installed("blavaan")
+  # An installed cmdstanr is not an installed cmdstan: this target
+  # translates and compiles the model, so the fit guards itself the way
+  # the setup.R helpers do.
   skip_if_not_installed("cmdstanr")
   fit <- NULL
   invisible(utils::capture.output(
-    fit <- withr::with_package("blavaan", suppressWarnings(suppressMessages(
-      do.call("bcfa", list(
-        "visual =~ x1 + x2 + x3",
-        data = lavaan::HolzingerSwineford1939,
-        n.chains = 2, burnin = 200, sample = 200, seed = 1,
-        target = "cmdstan"
-      ))
-    )))
+    fit <- skip_if_no_fit(
+      "blavaan (cmdstan target)", "one",
+      withr::with_package("blavaan", suppressWarnings(suppressMessages(
+        do.call("bcfa", list(
+          "visual =~ x1 + x2 + x3",
+          data = lavaan::HolzingerSwineford1939,
+          n.chains = 2, burnin = 200, sample = 200, seed = 1,
+          target = "cmdstan"
+        ))
+      )))
+    )
   ))
   mcobj <- blavaan::blavInspect(fit, "mcobj")
   expect_s3_class(mcobj, "CmdStanMCMC")

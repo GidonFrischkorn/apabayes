@@ -15,6 +15,32 @@ fixture <- function(name) {
 
 .apabayes_fit_cache <- new.env(parent = emptyenv())
 
+# A machine that cannot build a model reports these tests as *not run*,
+# never as failing: apabayes fits nothing, so a failure inside brm(),
+# bmm() or bcfa() says something about the environment and nothing about
+# the package. Measured on the first CI run (2026-09-17, run
+# 35209064098): `setup-r-dependencies` installs rstan and brms as
+# binaries without BH, so every live fit died with "Boost not found" and
+# 74 tests failed on all three platforms, where the same tree has 0
+# failures locally. `skip_on_cran()` and `skip_if_not_installed()` do not
+# see a missing C++ toolchain — an installed package is not a working
+# compiler — so the guard has to be the fit itself.
+#
+# `expr` is forced inside the handler, and the skip names the condition
+# so that a fit that broke for some *other* reason is still legible in
+# the log rather than silently absent.
+skip_if_no_fit <- function(pkg, name, expr) {
+  tryCatch(
+    expr,
+    error = function(cnd) {
+      testthat::skip(paste0(
+        pkg, " could not fit the \"", name, "\" model in this ",
+        "environment: ", conditionMessage(cnd)
+      ))
+    }
+  )
+}
+
 # The probe pair of ARCHITECTURE.md § Tests. `name` is "full"
 # (mpg ~ wt + am) or "reduced" (mpg ~ wt); both carry proper priors,
 # save_pars(all = TRUE) and sample_prior = "yes" so that the hypothesis
@@ -69,7 +95,10 @@ test_brms_fit <- function(name = c("full", "reduced", "mixed", "multinomial")) {
       args$sample_prior <- "yes"
     }
   }
-  fit <- suppressMessages(suppressWarnings(do.call(brms::brm, args)))
+  fit <- skip_if_no_fit(
+    "brms", name,
+    suppressMessages(suppressWarnings(do.call(brms::brm, args)))
+  )
   .apabayes_fit_cache[[name]] <- fit
   fit
 }
@@ -115,7 +144,10 @@ test_bmm_fit <- function(name = c("m3", "sdm")) {
     args,
     list(chains = 2, iter = 1000, seed = 1, refresh = 0, silent = 2)
   )
-  fit <- suppressMessages(suppressWarnings(do.call(bmm::bmm, args)))
+  fit <- skip_if_no_fit(
+    "bmm", name,
+    suppressMessages(suppressWarnings(do.call(bmm::bmm, args)))
+  )
   .apabayes_fit_cache[[key]] <- fit
   fit
 }
@@ -408,9 +440,12 @@ test_blavaan_fit <- function(name = "one") {
   # closure it cannot coerce. The package is attached for the duration,
   # so the name resolves.
   invisible(utils::capture.output(
-    fit <- withr::with_package("blavaan", suppressWarnings(suppressMessages(
-      do.call("bcfa", args)
-    )))
+    fit <- skip_if_no_fit(
+      "blavaan", name,
+      withr::with_package("blavaan", suppressWarnings(suppressMessages(
+        do.call("bcfa", args)
+      )))
+    )
   ))
   .apabayes_fit_cache[[key]] <- fit
   fit

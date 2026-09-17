@@ -229,26 +229,33 @@ test_that("the runjags method reads $mcmc", {
   skip_if_no_draws()
   skip_if_not_installed("runjags")
   skip_on_cran()
-  skip_if(
-    !nzchar(Sys.which("jags")) &&
-      !file.exists("/opt/homebrew/bin/jags"),
-    "JAGS binary not available"
-  )
+  # An installed runjags is not an installed JAGS. The binary is taken
+  # from the PATH wherever there is one and only falls back to the
+  # Homebrew location this package is developed against; pointing
+  # `jagspath` at that path unconditionally would fail on any machine
+  # that has JAGS somewhere else.
+  jags <- Sys.which("jags")
+  if (!nzchar(jags) && file.exists("/opt/homebrew/bin/jags")) {
+    jags <- "/opt/homebrew/bin/jags"
+  }
+  skip_if(!nzchar(jags), "JAGS binary not available")
   runjags::runjags.options(
-    jagspath = "/opt/homebrew/bin/jags",
+    jagspath = unname(jags),
     silent.jags = TRUE, silent.runjags = TRUE
   )
-  rj <- suppressWarnings(runjags::run.jags(
-    "model {
-       for (i in 1:N) { y[i] ~ dnorm(mu, tau) }
-       mu ~ dnorm(0, 0.001)
-       tau ~ dgamma(0.01, 0.01)
-     }",
-    monitor = "mu",
-    data = list(y = mtcars$mpg, N = nrow(mtcars)),
-    n.chains = 2, burnin = 200, sample = 500,
-    inits = list(list(mu = 20, tau = 0.05), list(mu = 15, tau = 0.02)),
-    method = "simple"
+  rj <- skip_if_no_fit("runjags", "normal mean", suppressWarnings(
+    runjags::run.jags(
+      "model {
+         for (i in 1:N) { y[i] ~ dnorm(mu, tau) }
+         mu ~ dnorm(0, 0.001)
+         tau ~ dgamma(0.01, 0.01)
+       }",
+      monitor = "mu",
+      data = list(y = mtcars$mpg, N = nrow(mtcars)),
+      n.chains = 2, burnin = 200, sample = 500,
+      inits = list(list(mu = 20, tau = 0.05), list(mu = 15, tau = 0.02)),
+      method = "simple"
+    )
   ))
 
   out <- apa_tidy(rj)

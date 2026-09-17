@@ -7,6 +7,17 @@
   modelbased was not enough: on a machine without marginaleffects the
   example run of `R CMD check` ERRORed.
 
+* internal: a machine that cannot build a model now reports the live-fit
+  tests as *not run* rather than as failing. `test_brms_fit()`,
+  `test_bmm_fit()` and `test_blavaan_fit()` skip with the condition
+  message when the fit itself errors, because apabayes fits nothing and a
+  failure inside `brm()` or `bcfa()` says something about the environment
+  and not about the package — `skip_on_cran()` and
+  `skip_if_not_installed()` cannot see a missing C++ toolchain. The
+  runjags test takes the JAGS binary from the PATH instead of a
+  hardcoded Homebrew path, and the blavaan cmdstan-target test guards
+  its fit the same way.
+
 * feat: `apa_value()` reads one value out of a tidy table. It addresses a
   row exactly as `apa_inline()` does — by term, by label, by the two
   sides of a structural-equation path, by a correlation's pair in either
